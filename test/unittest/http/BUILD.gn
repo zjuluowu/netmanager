@@ -1,0 +1,167 @@
+# Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//build/test.gni")
+import("//foundation/communication/netstack/netstack_config.gni")
+
+NETSTACK_NAPI_ROOT = "$SUBSYSTEM_DIR/netstack/frameworks/js/napi/"
+
+utils_include = [
+  "$SUBSYSTEM_DIR/netstack/utils/common_utils/include",
+  "$SUBSYSTEM_DIR/netstack/utils/http_over_curl/include",
+  "$SUBSYSTEM_DIR/netstack/utils/log/include",
+  "$SUBSYSTEM_DIR/netstack/utils/profiler_utils/include",
+  "$SUBSYSTEM_DIR/netstack/utils/tlv_utils/include",
+]
+
+common_external_deps = [
+  "ability_base:configuration",
+  "c_utils:utils",
+  "curl:curl_shared",
+  "hilog:libhilog",
+]
+
+ohos_unittest("http_unittest") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  module_out_path = "netstack/netstack/http_unittest"
+
+  include_dirs = [
+    "$NETSTACK_NAPI_ROOT/http/async_context/include",
+    "$NETSTACK_NAPI_ROOT/http/async_work/include",
+    "$NETSTACK_NAPI_ROOT/http/cache/base64/include",
+    "$NETSTACK_NAPI_ROOT/http/cache/cache_constant/include",
+    "$NETSTACK_NAPI_ROOT/http/cache/cache_proxy/include",
+    "$NETSTACK_NAPI_ROOT/http/cache/cache_strategy/include",
+    "$NETSTACK_NAPI_ROOT/http/cache/lru_cache/include",
+    "$NETSTACK_NAPI_ROOT/http/constant/include",
+    "$NETSTACK_NAPI_ROOT/http/http_exec/include",
+    "$NETSTACK_NAPI_ROOT/http/http_module/include",
+    "$NETSTACK_NAPI_ROOT/http/options/include",
+    "$NETSTACK_NAPI_ROOT/http/http_interceptor/include",
+    "$NETSTACK_NAPI_ROOT/http/cache/cache_constant/include",
+    "$NETSTACK_NAPI_ROOT/http/cache/cache_strategy/include",
+  ]
+  include_dirs += utils_include
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.communication_netmanager_base) &&
+      global_parts_info.communication_netmanager_base) {
+    include_dirs +=
+        [ "$SUBSYSTEM_DIR/netstack/utils/netstack_chr_client/include" ]
+  }
+
+  external_deps = common_external_deps
+  external_deps += [ "napi:ace_napi" ]
+
+  sources = [
+    "$NETSTACK_NAPI_ROOT/http/async_context/src/request_context.cpp",
+    "$NETSTACK_NAPI_ROOT/http/cache/cache_strategy/src/http_time.cpp",
+    "$NETSTACK_NAPI_ROOT/http/constant/src/constant.cpp",
+    "$NETSTACK_NAPI_ROOT/http/http_exec/src/http_exec.cpp",
+    "$NETSTACK_NAPI_ROOT/http/http_exec/src/http_tls_config.cpp",
+    "$NETSTACK_NAPI_ROOT/http/http_interceptor/src/http_interceptor.cpp",
+    "$NETSTACK_NAPI_ROOT/http/options/src/http_request_options.cpp",
+    "$NETSTACK_NAPI_ROOT/http/options/src/http_response.cpp",
+    "$SUBSYSTEM_DIR/netstack/utils/common_utils/src/netstack_common_utils.cpp",
+    "$SUBSYSTEM_DIR/netstack/utils/http_over_curl/src/epoll_request_handler.cpp",
+    "$SUBSYSTEM_DIR/netstack/utils/netstack_chr_client/src/netstack_chr_client.cpp",
+    "$SUBSYSTEM_DIR/netstack/utils/netstack_chr_client/src/netstack_chr_report.cpp",
+    "$SUBSYSTEM_DIR/netstack/utils/profiler_utils/src/netstack_network_profiler.cpp",
+    "$SUBSYSTEM_DIR/netstack/utils/tlv_utils/src/tlv_utils.cpp",
+    "ExtendInfoTest.cpp",
+    "HttpExecTest.cpp",
+    "HttpInterceptorTest.cpp",
+    "HttpRequestOptionsTest.cpp",
+  ]
+
+  deps = [ "$SUBSYSTEM_DIR/netstack/utils/napi_utils:napi_utils" ]
+  if (is_mingw || is_mac) {
+    sources +=
+        [ "$NETSTACK_DIR/utils/common_utils/src/netstack_common_utils.cpp" ]
+    deps += [
+      "$NETSTACK_DIR/utils/napi_utils:napi_utils_static",
+      "napi:ace_napi",
+    ]
+    external_deps += [
+      "bounds_checking_function:libsec_static",
+      "napi:ace_napi",
+    ]
+  } else {
+    deps += [
+      "$NETSTACK_DIR/utils:stack_utils_common",
+      "$NETSTACK_DIR/utils/napi_utils:napi_utils",
+    ]
+    external_deps += [
+      "ability_runtime:wantagent_innerkits",
+      "hilog:libhilog",
+      "hiprofiler:libnetwork_profiler",
+      "hitrace:hitrace_meter",
+      "ipc:ipc_single",
+      "napi:ace_napi",
+      "time_service:time_client",
+    ]
+    if (netstack_http_boringssl) {
+      external_deps += [
+        "crypto_boring:crypto_boring",
+        "crypto_boring:ssl_boring",
+      ]
+    } else {
+      external_deps += [
+        "openssl:libcrypto_shared",
+        "openssl:libssl_shared",
+      ]
+    }
+    if (defined(global_parts_info) &&
+        defined(global_parts_info.communication_netmanager_base) &&
+        global_parts_info.communication_netmanager_base) {
+      external_deps += [
+        "netmanager_base:net_conn_manager_if",
+        "netmanager_base:net_security_config_if",
+        "netmanager_base:netsys_client",
+      ]
+      defines = [ "HAS_NETMANAGER_BASE=1" ]
+    } else {
+      defines = [ "HAS_NETMANAGER_BASE=0" ]
+    }
+    if (!is_mingw && !is_mac && current_os != "ios" && host_os != "mac" &&
+        current_os != "mac" && current_os != "android") {
+      external_deps += [ "curl:curl_shared_http3" ]
+      defines += [ "USE_ARES" ]
+    }
+    defines += [ "ENABLE_HTTP_INTERCEPT=1" ]
+    if (product_name != "ohos-sdk") {
+      external_deps += [ "init:libbegetutil" ]
+      defines += [
+        "HTTP_PROXY_ENABLE",
+        "HTTP_MULTIPATH_CERT_ENABLE",
+        "HTTP_ONLY_VERIFY_ROOT_CA_ENABLE",
+      ]
+    }
+  }
+
+  part_name = "netstack"
+  subsystem_name = "communication"
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":http_unittest" ]
+}

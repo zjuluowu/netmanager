@@ -1,0 +1,456 @@
+/*
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef COMMUNICATIONNETSTACK_REQUEST_CONTEXT_H
+#define COMMUNICATIONNETSTACK_REQUEST_CONTEXT_H
+
+#include <queue>
+#include <mutex>
+#include <map>
+#include <condition_variable>
+#include "curl/curl.h"
+#include "base_context.h"
+#include "http_request_options.h"
+#include "http_response.h"
+#include "hi_app_event_report.h"
+#include "timing.h"
+#if HAS_NETMANAGER_BASE
+#include "netstack_network_profiler.h"
+#endif
+#include "request_tracer.h"
+#if ENABLE_HTTP_INTERCEPT
+#include "http_interceptor.h"
+#endif
+#ifdef HTTP_HANDOVER_FEATURE
+struct HttpHandoverInfo;
+#endif
+#ifdef HTTP_DEADFLOWRESET_FEATURE
+#include "http_deadflow_info.h"
+#endif
+
+namespace OHOS::NetStack::Http {
+static constexpr const uint32_t MAGIC_NUMBER = 0x86161616;
+struct LoadBytes {
+    LoadBytes() : nLen(0), tLen(0){};
+    LoadBytes(curl_off_t nowLen, curl_off_t totalLen)
+    {
+        nLen = nowLen;
+        tLen = totalLen;
+    };
+    ~LoadBytes() = default;
+    curl_off_t nLen;
+    curl_off_t tLen;
+};
+
+struct CertsPath {
+    CertsPath() = default;
+    ~CertsPath() = default;
+    std::vector<std::string> certPathList;
+    std::string certFile;
+};
+
+#ifdef USE_ARES
+static constexpr int PRECISION = 3;
+static constexpr int MSEC_BOUNDARY = 1000;
+
+struct ExtendInfoWrapper {
+    ExtendInfoWrapper(const ExtendInfoWrapper &) = delete;
+    ExtendInfoWrapper(ExtendInfoWrapper &&) = delete;
+    ExtendInfoWrapper &operator=(const ExtendInfoWrapper &) = delete;
+    ExtendInfoWrapper &operator=(ExtendInfoWrapper &&) = delete;
+    ExtendInfoWrapper() = default;
+    ~ExtendInfoWrapper() = default;
+    int errorCode = 0;
+    int osErr = 0;
+    long lastRecvErrno = 0;
+    long lastSendErrno = 0;
+    std::string sslErr;
+    long sslConnectErrno = 0;
+    TlsVersion minTlsVersion = TlsVersion::DEFAULT;
+    TlsVersion maxTlsVersion = TlsVersion::DEFAULT;
+    std::vector<std::string> ciphers;
+    std::string lastSslRecvErr;
+    std::string lastSslSendErr;
+    long lastPollinTimeUs = 0;
+    long lastOsPollinTimeUs = 0;
+    long lastPolloutTimeUs = 0;
+    long lastOsPolloutTimeUs = 0;
+    long lastSslRecvSize = -1;
+    long lastSslSendSize = -1;
+    long totalSslRecvSize = -1;
+    long totalSslSendSize = -1;
+    long dnsStatus = 0;
+    int dnsSockErr = 0;
+    int dnsCloseErr = 0;
+    int dnsConnErr = 0;
+    int dnsRecvErr = 0;
+    int dnsSendErr = 0;
+    long isDnsFromNetsysCache = 0;
+    long tcpConnectErrno = 0;
+    std::string srcAddr;
+    std::string dstAddr;
+    uint16_t srcPort = 0;
+    uint16_t dstPort = 0;
+    std::vector<std::string> tryConnectIp;
+    std::vector<std::string> tryConnectPort;
+    bool tryConnectIpv4 = false;
+    bool tryConnectIpv6 = false;
+    long dlSpeed = -1;
+    long ulSpeed = -1;
+    long dlSize = -1;
+    long ulSize = -1;
+    double dnsDur = 0.0;
+    double connectDur = 0.0;
+    double tlsDur = 0.0;
+    double firstSendDur = 0.0;
+    double firstRecvDur = 0.0;
+    double totalDur = 0.0;
+    double redirectDur = 0.0;
+    std::vector<std::string> certIssuerNames;
+    std::string proxyType = "none";
+};
+
+class ExtendResponseInfo {
+private:
+    std::shared_ptr<ExtendInfoWrapper> info_ = std::make_shared<ExtendInfoWrapper>();
+
+public:
+    std::shared_ptr<ExtendInfoWrapper> operator->() const;
+    [[nodiscard]] std::string ToStringForErrLog(int errorCode);
+    [[nodiscard]] std::string ToString();
+};
+
+class ExtResInfoParser {
+public:
+    void TraverseErrInfo(ExtendResponseInfo &extResInfo, int errorCode);
+    virtual void SetErrorInfo(const std::string &key, const std::string &value) = 0;
+    virtual ~ExtResInfoParser() = default;
+
+private:
+    std::string GetEpollTimeInfo(long timeStamp);
+    void AddSslTlsInfo(ExtendResponseInfo &extResInfo);
+    void AddDnsErrorInfo(ExtendResponseInfo &extResInfo);
+    void AddEpollInfo(ExtendResponseInfo &extResInfo);
+    void AddSpeedAndSizeInfo(ExtendResponseInfo &extResInfo);
+    void AddTcpConnInfo(ExtendResponseInfo &extResInfo);
+    void AddBasicInfo(ExtendResponseInfo &extResInfo);
+    void AddTimeConsumingInfo(ExtendResponseInfo &extResInfo);
+    void AddAllErrInfo(ExtendResponseInfo &extResInfo);
+    std::string DoubleToString(double num, int precision);
+};
+
+class ExtResInfoInnerParser : public ExtResInfoParser {
+public:
+    explicit ExtResInfoInnerParser(std::string &str) : extResInfoStr_(str) {}
+    std::string &extResInfoStr_;
+
+private:
+    void SetErrorInfo(const std::string &key, const std::string &value) override;
+};
+#endif
+
+#if ENABLE_HTTP_INTERCEPT
+class HttpInterceptor;
+#endif
+
+class RequestContext final : public BaseContext {
+public:
+    friend class HttpExec;
+
+    RequestContext() = delete;
+
+    RequestContext(napi_env env, const std::shared_ptr<EventManager> &manager);
+
+    ~RequestContext() override;
+
+    void StartTiming();
+
+    void ParseParams(napi_value *params, size_t paramsCount) override;
+
+#if ENABLE_HTTP_INTERCEPT
+    void SetInterceptorRefs(const std::map<std::string, napi_ref> &interceptorRefs);
+
+    HttpInterceptor *GetInterceptor();
+#endif
+
+    void SetEnableAutoCookie(bool enableAutoCookie);
+
+    void SetShareHandle(std::shared_ptr<CURLSH> shareHandle);
+
+    [[nodiscard]] std::shared_ptr<CURLSH> GetShareHandle() const;
+
+    HttpRequestOptions options;
+
+    HttpResponse response;
+
+#ifdef USE_ARES
+    ExtendResponseInfo extendInfo_;
+#endif
+
+    [[nodiscard]] bool IsUsingCache() const;
+
+    void SetCurlHeaderList(curl_slist *curlHeaderList);
+
+    curl_slist *GetCurlHeaderList();
+
+    void SetCacheResponse(const HttpResponse &cacheResponse);
+
+    void SetResponseByCache();
+
+    [[nodiscard]] int32_t GetErrorCode() const override;
+
+    [[nodiscard]] std::string GetErrorMessage() const override;
+
+    void EnableRequestInStream();
+
+    [[nodiscard]] bool IsRequestInStream() const;
+
+    void SetDlLen(curl_off_t nowLen, curl_off_t totalLen);
+
+    LoadBytes GetDlLen();
+
+    void SetUlLen(curl_off_t nowLen, curl_off_t totalLen);
+
+    LoadBytes GetUlLen();
+
+    bool CompareWithLastElement(curl_off_t nowLen, curl_off_t totalLen);
+
+    void SetTempData(const void *data, size_t size);
+
+    std::string GetTempData();
+
+    void PopTempData();
+
+    void ParseClientCert(napi_value optionsValue);
+
+    void ParseRemoteValidationMode(napi_value optionsValue);
+
+    void ParseTlsOption(napi_value optionsValue);
+
+    void ParseServerAuthentication(napi_value optionsValue);
+
+    void CachePerformanceTimingItem(const std::string &key, double value);
+
+    void StopAndCacheNapiPerformanceTiming(const char *key);
+
+    void SetPerformanceTimingToResult(napi_value result);
+
+    void SetConnectionExtraInfoToResult(napi_value result);
+
+    void SetMultipart(curl_mime *multipart);
+
+    void SetCertsPath(std::vector<std::string> &&certPathList, const std::string &certFile);
+
+    const CertsPath &GetCertsPath();
+
+    [[nodiscard]] int32_t GetTaskId() const;
+
+    void SetModuleId(uint64_t moduleId);
+
+    uint64_t GetModuleId() const;
+
+    void SetCurlHostList(curl_slist *curlHostList);
+
+    [[nodiscard]] curl_slist *GetCurlHostList();
+
+    void SetAtomicService(bool isAtomicService);
+
+    [[nodiscard]] bool IsAtomicService() const;
+
+    void SetBundleName(const std::string &bundleName);
+
+#ifdef HTTP_DEADFLOWRESET_FEATURE
+    void SetDeadFlowResetResult(bool result);
+
+    bool IsDeadFlowResetTargetApp();
+#endif
+
+    [[nodiscard]] std::string GetBundleName() const;
+
+    void SetCurlHandle(CURL *handle);
+
+    CURL *GetCurlHandle();
+
+    void SetValidationCallbackTsfn(napi_threadsafe_function tsfn);
+
+    napi_threadsafe_function GetValidationCallbackTsfn() const;
+
+    void SendNetworkProfiler();
+
+    RequestTracer::Trace &GetTrace();
+
+    bool IsRootCaVerified() const;
+
+    void SetRootCaVerified();
+
+    bool IsRootCaVerifiedOk() const;
+
+    void SetRootCaVerifiedOk(bool ok);
+
+    void SetPinnedPubkey(std::string &pubkey);
+
+    std::string GetPinnedPubkey() const;
+
+    void IncreaseRedirectCount();
+
+    [[nodiscard]] bool IsReachRedirectLimit();
+
+    void ParseSniHostName(napi_value optionsValue);
+
+    void SetSyncWait(bool isSync);
+
+    bool IsSyncWait() const;
+
+    void NotifySyncComplete();
+
+    void WaitForSyncComplete();
+
+    std::map<std::string, napi_ref> interceptorRefs_;
+
+#ifdef HTTP_HANDOVER_FEATURE
+    void SetRequestHandoverInfo(const HttpHandoverInfo &httpHandoverInfo);
+ 
+    std::string GetRequestHandoverInfo();
+#endif
+#ifdef HTTP_DEADFLOWRESET_FEATURE
+    void SetHttpDeadFlowInfo(int32_t port, bool reused, int32_t socket, int32_t retries,
+        int32_t tdiff);
+    const HttpDeadFlowInfo &GetHttpDeadFlowInfo();
+#endif
+private:
+    uint32_t magicNumber_ = MAGIC_NUMBER;
+    int32_t taskId_ = -1;
+    bool usingCache_ = true;
+    bool requestInStream_ = false;
+    std::mutex dlLenLock_;
+    std::mutex ulLenLock_;
+    std::mutex tempDataLock_;
+    std::queue<std::string> tempData_;
+    HttpResponse cacheResponse_;
+    std::queue<LoadBytes> dlBytes_;
+    std::queue<LoadBytes> ulBytes_;
+    curl_slist *curlHeaderList_ = nullptr;
+    Timing::TimerMap timerMap_;
+    std::map<std::string, double> performanceTimingMap_;
+    curl_mime *multipart_ = nullptr;
+    CertsPath certsPath_;
+    uint64_t moduleId_ = 0;
+    curl_slist *curlHostList_ = nullptr;
+    bool isAtomicService_ = false;
+    std::string bundleName_;
+    bool isRootCaVerified_ = false;
+    bool isRootCaVerifiedOk_ = false;
+    std::string pinnedPubkey_;
+    uint32_t redirects_ = 0;
+#if HAS_NETMANAGER_BASE
+    std::unique_ptr<NetworkProfilerUtils> networkProfilerUtils_;
+#endif
+    CURL *curlHandle_ = nullptr;
+    napi_threadsafe_function validationCallbackTsfn_ = nullptr;
+#ifdef HTTP_HANDOVER_FEATURE
+    std::string httpHandoverInfoStr_ = "no handover";
+#endif
+#if ENABLE_HTTP_INTERCEPT
+    std::unique_ptr<HttpInterceptor> interceptor_ = nullptr;
+#endif
+
+#ifdef HTTP_DEADFLOWRESET_FEATURE
+    HttpDeadFlowInfo deadFlowInfo_;
+    bool isDeadFlowResetTargetApp_ = false;
+#endif
+    RequestTracer::Trace trace_;
+
+    bool CheckParamsType(napi_value *params, size_t paramsCount);
+
+    void ParseNumberOptions(napi_value optionsValue);
+
+    void ParseHeader(napi_value optionsValue);
+
+    bool ParseExtraData(napi_value optionsValue);
+
+    bool ParseBody(napi_value optionsValue);
+
+    bool ParseQueryParams(napi_value optionsValue);
+
+    bool ParseBodyQueryParamsOrExtraData(napi_value optionsValue);
+
+    void ProcessQueryParamArray(const std::string &name, bool encodeName, napi_value value, std::string &queryParams);
+
+    void ProcessQueryParamValue(const std::string &name, bool encodeName, napi_value value, std::string &queryParams);
+
+    void BuildUrlWithQueryParams();
+
+    void ParseUsingHttpProxy(napi_value optionsValue);
+
+    void ParseSocks5Proxy(napi_value optionsValue);
+
+    void ParseCaPath(napi_value optionsValue);
+
+    void ParseCaData(napi_value optionsValue);
+
+    void ParseDnsServers(napi_value optionsValue);
+
+    void ParseMultiFormData(napi_value optionsValue);
+
+    void ParseDohUrl(napi_value optionsValue);
+
+    void ParseResumeFromToNumber(napi_value optionsValue);
+
+    void ParseCertificatePinning(napi_value optionsValue);
+
+    bool GetRequestBody(napi_value extraData);
+
+    void UrlAndOptions(napi_value urlValue, napi_value optionsValue);
+
+    bool HandleMethodForGet(napi_value extraData);
+
+    MultiFormData NapiValue2FormData(napi_value formDataValue);
+
+    CertificatePinning NapiValue2CertPinning(napi_value certPIN);
+
+    void SaveFormData(napi_env env, napi_value dataValue, MultiFormData &multiFormData);
+
+    void ParseAddressFamily(napi_value optionsValue);
+
+    void ParseSslType(napi_value optionsValue);
+
+    void ParseClientEncCert(napi_value optionsValue);
+
+    void ParsePartialChain(napi_value optionsValue);
+
+    void ParseMethod(napi_value optionsValue);
+
+    void ParsePathPreference(napi_value optionsValue);
+
+    void ParseMaxRedirects(napi_value optionsValue);
+
+    void ParseReuseConnections(napi_value optionsValue);
+
+    void ParseInactivityMs(napi_value optionsValue);
+
+    void ParseEnableAutoCookie(napi_value optionsValue);
+
+private:
+    std::mutex syncMutex_;
+    mutable std::mutex shareHandleMutex_;
+    std::condition_variable syncCv_;
+    bool syncComplete_ = false;
+    bool isSyncWait_ = false;
+    bool bodyOrQueryConfigured_ = false;
+    std::shared_ptr<CURLSH> shareHandle_;
+};
+} // namespace OHOS::NetStack::Http
+
+#endif /* COMMUNICATIONNETSTACK_REQUEST_CONTEXT_H */

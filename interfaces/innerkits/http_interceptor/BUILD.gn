@@ -1,0 +1,121 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netstack/netstack_config.gni")
+
+config("http_interceptor_common_config") {
+  include_dirs = [ "$NETSTACK_DIR/interfaces/innerkits/http_interceptor/include" ]
+
+  cflags = []
+  if (is_double_framework) {
+    cflags += [ "-DCONFIG_DUAL_FRAMEWORK" ]
+  }
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+  if (is_standard_system) {
+    cflags += [ "-DCONFIG_STANDARD_SYSTEM" ]
+  }
+  if (defined(build_public_version) && build_public_version) {
+    cflags += [ "-DBUILD_PUBLIC_VERSION" ]
+  }
+
+  if (is_mingw) {
+    defines = [ "WINDOWS_PLATFORM" ]
+  } else if (is_mac) {
+    defines = [ "MAC_PLATFORM" ]
+  }
+}
+
+http_interceptor_common_sanitize = {
+  cfi = true
+  cfi_cross_dso = true
+  debug = false
+}
+
+http_interceptor_common_cflags = [
+  "-D_FORTIFY_SOURCE=2",
+  "-fdata-sections",
+  "-ffunction-sections",
+  "-O2",
+]
+
+http_interceptor_common_cflags_cc = [
+  "-D_FORTIFY_SOURCE=2",
+  "-fdata-sections",
+  "-ffunction-sections",
+  "-O2",
+]
+
+http_interceptor_common_ldflags = [
+  "-Wl,--exclude-libs=ALL",
+  "-Wl,--gc-sections",
+]
+
+http_interceptor_common_sources = [
+  "$NETSTACK_NATIVE_ROOT/http_interceptor/http_interceptor_mgr.cpp",
+  "$NETSTACK_NATIVE_ROOT/http_interceptor/http_interceptor_type.cpp",
+]
+
+http_interceptor_common_deps = [
+  "$NETSTACK_DIR/utils:stack_utils_common",
+  "$NETSTACK_DIR/utils/napi_utils:napi_utils",
+]
+
+http_interceptor_common_external_deps = [
+  "ffrt:libffrt",
+  "hilog:libhilog",
+  "libuv:uv",
+  "node:node_header_notice",
+]
+
+ohos_shared_library("http_interceptor") {
+  sanitize = http_interceptor_common_sanitize
+  branch_protector_ret = "pac_ret"
+
+  sources = http_interceptor_common_sources
+  cflags = http_interceptor_common_cflags
+  cflags_cc = http_interceptor_common_cflags_cc
+  ldflags = http_interceptor_common_ldflags
+
+  version_script = "libhttp_interceptor.map"
+  public_configs = [ ":http_interceptor_common_config" ]
+
+  deps = http_interceptor_common_deps
+  external_deps = http_interceptor_common_external_deps + [ "curl:curl_shared_http3" ]
+
+  innerapi_tags = [ "platformsdk" ]
+  part_name = "netstack"
+  subsystem_name = "communication"
+}
+
+ohos_shared_library("http_interceptor_http") {
+  sanitize = http_interceptor_common_sanitize
+  branch_protector_ret = "pac_ret"
+
+  sources = http_interceptor_common_sources
+  cflags = http_interceptor_common_cflags
+  cflags_cc = http_interceptor_common_cflags_cc
+  ldflags = http_interceptor_common_ldflags
+
+  version_script = "libhttp_interceptor.map"
+  public_configs = [ ":http_interceptor_common_config" ]
+
+  deps = http_interceptor_common_deps
+  external_deps = http_interceptor_common_external_deps + [ "curl:curl_shared" ]
+
+  innerapi_tags = [ "platformsdk" ]
+  part_name = "netstack"
+  subsystem_name = "communication"
+}
