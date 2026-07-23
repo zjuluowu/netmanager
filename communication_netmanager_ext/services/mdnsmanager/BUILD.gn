@@ -1,0 +1,146 @@
+# Copyright (C) 2023-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_ext/netmanager_ext_config.gni")
+
+config("mdns_manager_config") {
+  include_dirs = [
+    "$EXT_INNERKITS_ROOT/mdnsclient/include",
+    "$EXT_INNERKITS_ROOT/mdnsclient/include/proxy",
+    "$EXT_INNERKITS_ROOT/include",
+    "include",
+    "include/stub",
+  ]
+}
+
+ohos_shared_library("mdns_manager") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "src/mdns_manager.cpp",
+    "src/mdns_socket_listener.cpp",
+    "src/mdns_packet_parser.cpp",
+    "src/mdns_protocol_impl.cpp",
+    "src/mdns_service.cpp",
+    "src/net_interface_callback.cpp",
+
+  ]
+
+  configs = [ ":mdns_manager_config" ]
+
+  include_dirs = [
+    "$EXT_INNERKITS_ROOT/include",
+  ]
+
+  deps = [
+    "$EXT_INNERKITS_ROOT/mdnsclient:mdns_parcel",
+    "$EXT_INNERKITS_ROOT/mdnsclient:mdns_service_interface_stub",
+  ]
+
+  deps += [ "$EXT_INNERKITS_ROOT/mdnsclient:mdns_service_interface_stub" ]
+  cflags = common_cflags + memory_optimization_cflags
+
+  cflags_cc = common_cflags + memory_optimization_cflags_cc
+
+  ldflags = memory_optimization_ldflags
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "common_event_service:cesfwk_innerkits",
+    "hisysevent:libhisysevent",
+    "ipc:ipc_core",
+    "netmanager_base:net_conn_manager_if",
+    "netmanager_base:net_manager_common",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "ability_base:want",
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"MDnsManager\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  if (enable_netmgr_ext_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_ext"
+  subsystem_name = "communication"
+}
+
+ohos_static_library("mdns_manager_static") {
+  testonly = true
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "src/mdns_manager.cpp",
+    "src/mdns_socket_listener.cpp",
+    "src/mdns_packet_parser.cpp",
+    "src/mdns_protocol_impl.cpp",
+    "src/mdns_service.cpp",
+    "src/net_interface_callback.cpp",
+  ]
+
+  configs = [ ":mdns_manager_config" ]
+
+  include_dirs = [
+    "$EXT_INNERKITS_ROOT/include",
+  ]
+
+  deps = [
+    "$EXT_INNERKITS_ROOT/mdnsclient:mdns_parcel",
+    "$EXT_INNERKITS_ROOT/mdnsclient:mdns_service_interface_stub",
+  ]
+
+  deps += [ "$EXT_INNERKITS_ROOT/mdnsclient:mdns_service_interface_stub" ]
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "common_event_service:cesfwk_innerkits",
+    "hisysevent:libhisysevent",
+    "ipc:ipc_core",
+    "netmanager_base:net_conn_manager_if",
+    "netmanager_base:net_manager_common",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"MDnsManager\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  if (enable_netmgr_ext_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_ext"
+  subsystem_name = "communication"
+}

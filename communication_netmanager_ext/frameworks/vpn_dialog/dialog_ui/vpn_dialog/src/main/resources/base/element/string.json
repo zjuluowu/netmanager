@@ -1,0 +1,52 @@
+{
+    "string":[
+        {
+            "name":"entry_desc",
+            "value":"description"
+        },
+        {
+            "name":"VpnDialogAbility_desc",
+            "value":"description"
+        },
+        {
+            "name":"VpnDialogAbility_label",
+            "value":"label"
+        },
+        {
+            "name":"MainAbility_desc",
+            "value":"manage the permissions of all applications from the permission and application dimensions"
+        },
+        {
+            "name":"MainAbility_label",
+            "value":"authorization manager"
+        },
+        {
+            "name":"allowButton",
+            "value":"Allow",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"notAllowButton",
+            "value":"Cancel",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"warning",
+            "value":"Please confirm that you trust this app. Untrustworthy apps could monitor your network traffic and steal your data.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"title",
+            "value":"Allow this VPN?",
+            "attr":{
+                "priority":"LT"
+            }
+        }
+    ]
+}

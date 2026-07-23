@@ -1,0 +1,536 @@
+/*
+ * Copyright (c) 2025-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <gtest/gtest.h>
+
+#ifdef GTEST_API_
+#define private public
+#define protected public
+#endif
+
+#include "ethernet_client.h"
+#include "net_manager_constants.h"
+#include "ethernet_management.h"
+#include "dev_interface_state.h"
+
+namespace OHOS {
+namespace NetManagerStandard {
+using namespace testing::ext;
+namespace {
+using namespace testing::ext;
+constexpr const char *DEV_NAME = "eth0";
+constexpr const char *IFACE_NAME = "wlan0";
+} // namespace
+
+class EthernetClientTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    sptr<InterfaceConfiguration> GetIfaceConfig();
+    void SetUp();
+    void TearDown();
+};
+
+class NetEapPostBackCallbackTest : public NetEapPostbackCallbackStub {
+public:
+    int32_t OnEapSupplicantPostback(NetType netType, const sptr<EapData> &eapData) override
+    {
+        return 0;
+    }
+};
+ 
+class NetRegisterEapCallbackTest : public NetRegisterEapCallbackStub {
+public:
+    int32_t OnRegisterCustomEapCallback(const std::string &regCmd) override
+    {
+        return 0;
+    }
+    int32_t OnReplyCustomEapDataEvent(int result, const sptr<EapData> &eapData) override
+    {
+        return 0;
+    }
+};
+
+sptr<InterfaceConfiguration> EthernetClientTest::GetIfaceConfig()
+{
+    sptr<InterfaceConfiguration> ic = (std::make_unique<InterfaceConfiguration>()).release();
+    if (!ic) {
+        return ic;
+    }
+    INetAddr ipv4Addr;
+    ipv4Addr.type_ = INetAddr::IPV4;
+    ipv4Addr.family_ = 0x01;
+    ipv4Addr.prefixlen_ = 0x01;
+    ipv4Addr.address_ = "172.17.5.234";
+    ipv4Addr.netMask_ = "255.255.254.0";
+    ipv4Addr.hostName_ = "netAddr";
+    ic->ipStatic_.ipAddrList_.push_back(ipv4Addr);
+    INetAddr route;
+    route.type_ = INetAddr::IPV4;
+    route.family_ = 0x01;
+    route.prefixlen_ = 0x01;
+    route.address_ = "0.0.0.0";
+    route.netMask_ = "0.0.0.0";
+    route.hostName_ = "netAddr";
+    ic->ipStatic_.routeList_.push_back(route);
+    INetAddr gateway;
+    gateway.type_ = INetAddr::IPV4;
+    gateway.family_ = 0x01;
+    gateway.prefixlen_ = 0x01;
+    gateway.address_ = "172.17.4.1";
+    gateway.netMask_ = "0.0.0.0";
+    gateway.hostName_ = "netAddr";
+    ic->ipStatic_.gatewayList_.push_back(gateway);
+    INetAddr netMask;
+    netMask.type_ = INetAddr::IPV4;
+    netMask.family_ = 0x01;
+    netMask.address_ = "255.255.255.0";
+    netMask.hostName_ = "netAddr";
+    ic->ipStatic_.netMaskList_.push_back(netMask);
+    INetAddr dns1;
+    dns1.type_ = INetAddr::IPV4;
+    dns1.family_ = 0x01;
+    dns1.address_ = "8.8.8.8";
+    dns1.hostName_ = "netAddr";
+    INetAddr dns2;
+    dns2.type_ = INetAddr::IPV4;
+    dns2.family_ = 0x01;
+    dns2.address_ = "114.114.114.114";
+    dns2.hostName_ = "netAddr";
+    ic->ipStatic_.dnsServers_.push_back(dns1);
+    ic->ipStatic_.dnsServers_.push_back(dns2);
+    return ic;
+}
+
+void EthernetClientTest::SetUpTestCase() {}
+
+void EthernetClientTest::TearDownTestCase() {}
+
+void EthernetClientTest::SetUp() {}
+
+void EthernetClientTest::TearDown() {}
+
+/**
+ * @tc.name: GetMacAddressTest001
+ * @tc.desc: Test GetMacAddress.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, GetMacAddressTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    std::vector<MacAddressInfo> macAddrList;
+    int32_t ret = ethernetClient->GetMacAddress(macAddrList);
+    EXPECT_EQ(ret, NETMANAGER_EXT_ERR_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: SetIfaceConfigTest001
+ * @tc.desc: Test SetIfaceConfig.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, SetIfaceConfigTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    sptr<InterfaceConfiguration> ic = GetIfaceConfig();
+    int32_t ret = ethernetClient->SetIfaceConfig(DEV_NAME, ic);
+    EXPECT_EQ(ret, NETMANAGER_EXT_ERR_PERMISSION_DENIED);
+}
+
+#ifdef FEATURE_GET_IFACE_SUPPLIER_ID
+/**
+ * @tc.name: GetIfaceSupplierIdTest001
+ * @tc.desc: Test GetIfaceSupplierId with valid interface name.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, GetIfaceSupplierIdTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    ASSERT_NE(ethernetClient, nullptr);
+
+    std::string iface = DEV_NAME;
+    uint32_t supplierId = 0;
+
+    int32_t ret = ethernetClient->GetIfaceSupplierId(iface, supplierId);
+    EXPECT_NE(ret, NETMANAGER_EXT_SUCCESS);
+}
+
+/**
+ * @tc.name: GetIfaceSupplierIdTest002
+ * @tc.desc: Test GetIfaceSupplierId with empty interface name.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, GetIfaceSupplierIdTest002, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    ASSERT_NE(ethernetClient, nullptr);
+
+    std::string iface = "";
+    uint32_t supplierId = 0;
+
+    int32_t ret = ethernetClient->GetIfaceSupplierId(iface, supplierId);
+    EXPECT_NE(ret, NETMANAGER_EXT_SUCCESS);
+}
+#endif // FEATURE_GET_IFACE_SUPPLIER_ID
+
+/**
+ * @tc.name: GetIfaceConfigTest001
+ * @tc.desc: Test GetIfaceConfig.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, GetIfaceConfigTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    std::string iface = DEV_NAME;
+    sptr<InterfaceConfiguration> ifaceConfig = GetIfaceConfig();
+    int32_t ret = ethernetClient->GetIfaceConfig(iface, ifaceConfig);
+    EXPECT_EQ(ret, NETMANAGER_EXT_ERR_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: ResetFactoryTest001
+ * @tc.desc: Test ResetFactory.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, ResetFactoryTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int32_t ret = ethernetClient->ResetFactory();
+    EXPECT_NE(ret, NETMANAGER_EXT_SUCCESS);
+}
+
+/**
+ * @tc.name: SetInterfaceUpTest001
+ * @tc.desc: Test SetInterfaceUp.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, SetInterfaceUpTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int32_t ret = ethernetClient->SetInterfaceUp(DEV_NAME);
+    EXPECT_NE(ret, NETMANAGER_EXT_SUCCESS);
+}
+
+/**
+ * @tc.name: SetInterfaceDownTest001
+ * @tc.desc: Test SetInterfaceDown.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, SetInterfaceDownTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int32_t ret = ethernetClient->SetInterfaceDown(DEV_NAME);
+    EXPECT_NE(ret, NETMANAGER_EXT_SUCCESS);
+}
+
+/**
+ * @tc.name: SetInterfaceConfigTest001
+ * @tc.desc: Test SetInterfaceConfig.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, SetInterfaceConfigTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    std::string iface = DEV_NAME;
+    OHOS::nmd::InterfaceConfigurationParcel cfg;
+    cfg.ifName = "eth0";
+    cfg.hwAddr = "";
+    cfg.ipv4Addr = "172.17.5.234";
+    cfg.prefixLength = 24;
+    cfg.flags.push_back("up");
+    cfg.flags.push_back("broadcast");
+    int32_t ret = ethernetClient->SetInterfaceConfig(iface, cfg);
+    EXPECT_NE(ret, NETMANAGER_EXT_SUCCESS);
+}
+
+/**
+ * @tc.name: GetDeviceInformationTest001
+ * @tc.desc: Test GetDeviceInformation.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, GetDeviceInformationTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    std::vector<EthernetDeviceInfo> devInfoList;
+    int32_t ret = ethernetClient->GetDeviceInformation(devInfoList);
+    EXPECT_NE(ret, NETMANAGER_EXT_SUCCESS);
+}
+
+/**
+ * @tc.name: RegCustomEapHandlerTest001
+ * @tc.desc: Test RegCustomEapHandler.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, RegCustomEapHandlerTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    NetType netType = NetType::ETH0;
+    std::string regCmd = "";
+    sptr<INetEapPostbackCallback> callback = (std::make_unique<NetEapPostBackCallbackTest>()).release();
+    int32_t ret = ethernetClient->RegCustomEapHandler(netType, regCmd, callback);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+}
+ 
+/**
+ * @tc.name: ReplyCustomEapDataTest001
+ * @tc.desc: Test ReplyCustomEapData.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, ReplyCustomEapDataTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int result = -1;
+    sptr<EapData> eapData = (std::make_unique<EapData>()).release();
+    int32_t ret = ethernetClient->ReplyCustomEapData(result, eapData);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+}
+ 
+/**
+ * @tc.name: RegisterCustomEapCallbackTest001
+ * @tc.desc: Test RegisterCustomEapCallback.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, RegisterCustomEapCallbackTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    NetType netType = NetType::ETH0;
+    sptr<INetRegisterEapCallback> callback = (std::make_unique<NetRegisterEapCallbackTest>()).release();
+    int32_t ret = ethernetClient->RegisterCustomEapCallback(netType, callback);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+}
+ 
+/**
+ * @tc.name: UnRegisterCustomEapCallbackTest001
+ * @tc.desc: Test UnRegisterCustomEapCallback.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, UnRegisterCustomEapCallbackTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    NetType netType = NetType::ETH0;
+    sptr<INetRegisterEapCallback> callback = (std::make_unique<NetRegisterEapCallbackTest>()).release();
+    int32_t ret = ethernetClient->UnRegisterCustomEapCallback(netType, callback);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+}
+ 
+/**
+ * @tc.name: NotifyWpaEapInterceptInfoTest001
+ * @tc.desc: Test NotifyWpaEapInterceptInfo.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, NotifyWpaEapInterceptInfoTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    NetType netType = NetType::ETH0;
+    sptr<EapData> eapData = (std::make_unique<EapData>()).release();
+    int32_t ret = ethernetClient->NotifyWpaEapInterceptInfo(netType, eapData);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+}
+ 
+/**
+ * @tc.name: StartEthEapTest001
+ * @tc.desc: Test StartEthEap.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, StartEthEapTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int32_t netId = 100;
+    EthEapProfile profile;
+    int32_t ret = ethernetClient->StartEthEap(netId, profile);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+}
+ 
+/**
+ * @tc.name: LogOffEthEapTest001
+ * @tc.desc: Test LogOffEthEap.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, LogOffEthEapTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int32_t netId = 100;
+    int32_t ret = ethernetClient->LogOffEthEap(netId);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+}
+
+/**
+ * @tc.name: StartEthEapTest002
+ * @tc.desc: Test StartEthEap.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, StartEthEapTest002, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int32_t netId = 100;
+    EthEapProfile profile;
+    int32_t ret = ethernetClient->StartEthEap(netId, profile);
+    EXPECT_GE(ret, -1);
+}
+
+#ifdef FEATURE_GET_IFACE_SUPPLIER_ID
+/**
+ * @tc.name: GetIfaceSupplierIdTest003
+ * @tc.desc: Test GetIfaceSupplierId with valid device.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, GetIfaceSupplierIdTest003, TestSize.Level1)
+{
+    auto ethernetManagement = DelayedSingleton<EthernetManagement>::GetInstance();
+    ASSERT_NE(ethernetManagement, nullptr);
+
+    std::string dev = DEV_NAME;
+    sptr<DevInterfaceState> devState = new (std::nothrow) DevInterfaceState();
+    ASSERT_NE(devState, nullptr);
+    devState->SetDevName(dev);
+    devState->netSupplier_ = 12345;
+
+    {
+        std::unique_lock<std::shared_mutex> lock(ethernetManagement->mutex_);
+        ethernetManagement->devs_[dev] = devState;
+    }
+
+    uint32_t supplierId = 0;
+    int32_t ret = ethernetManagement->GetIfaceSupplierId(dev, supplierId);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+    EXPECT_EQ(supplierId, 12345);
+
+    {
+        std::unique_lock<std::shared_mutex> lock(ethernetManagement->mutex_);
+        ethernetManagement->devs_.erase(dev);
+    }
+}
+
+/**
+ * @tc.name: GetIfaceSupplierIdTest004
+ * @tc.desc: Test GetIfaceSupplierId with nullptr device in map.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, GetIfaceSupplierIdTest004, TestSize.Level1)
+{
+    auto ethernetManagement = DelayedSingleton<EthernetManagement>::GetInstance();
+    ASSERT_NE(ethernetManagement, nullptr);
+
+    std::string dev = "nonexistent_dev";
+    {
+        std::unique_lock<std::shared_mutex> lock(ethernetManagement->mutex_);
+        ethernetManagement->devs_[dev] = nullptr;
+    }
+
+    uint32_t supplierId = 0;
+    int32_t ret = ethernetManagement->GetIfaceSupplierId(dev, supplierId);
+    EXPECT_EQ(ret, ETHERNET_ERR_DEVICE_INFORMATION_NOT_EXIST);
+
+    {
+        std::unique_lock<std::shared_mutex> lock(ethernetManagement->mutex_);
+        ethernetManagement->devs_.erase(dev);
+    }
+}
+
+HWTEST_F(EthernetClientTest, GetIfaceSupplierIdTest005, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    std::string iface = "iface_test";
+    uint32_t supplierId = 0;
+    int32_t ret = ethernetClient->GetIfaceSupplierId(iface, supplierId);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+}
+#endif // FEATURE_GET_IFACE_SUPPLIER_ID
+
+#ifdef NETMANAGER_EXT_ETHERNET_ENABLE_DISABLE
+/**
+ * @tc.name: EnableEthernetInterfaceTest001
+ * @tc.desc: Test EnableEthernetInterface.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, EnableEthernetInterfaceTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int32_t ret = ethernetClient->EnableEthernetInterface();
+    EXPECT_NE(ret, NETMANAGER_EXT_SUCCESS);
+}
+
+/**
+ * @tc.name: DisableEthernetInterfaceTest001
+ * @tc.desc: Test DisableEthernetInterface.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, DisableEthernetInterfaceTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int32_t ret = ethernetClient->DisableEthernetInterface();
+    EXPECT_NE(ret, NETMANAGER_EXT_SUCCESS);
+}
+
+/**
+ * @tc.name: IsEthernetEnabledTest001
+ * @tc.desc: Test IsEthernetEnabled.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, IsEthernetEnabledTest001, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int32_t enabled = 0;
+    int32_t ret = ethernetClient->IsEthernetEnabled(enabled);
+    EXPECT_NE(ret, NETMANAGER_EXT_SUCCESS);
+}
+
+/**
+ * @tc.name: EnableEthernetInterfaceTest002
+ * @tc.desc: Test EnableEthernetInterface with multiple calls.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, EnableEthernetInterfaceTest002, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int32_t ret1 = ethernetClient->EnableEthernetInterface();
+    int32_t ret2 = ethernetClient->EnableEthernetInterface();
+    EXPECT_GE(ret1, -1);
+    EXPECT_GE(ret2, -1);
+}
+
+/**
+ * @tc.name: DisableEthernetInterfaceTest002
+ * @tc.desc: Test DisableEthernetInterface with multiple calls.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, DisableEthernetInterfaceTest002, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int32_t ret1 = ethernetClient->DisableEthernetInterface();
+    int32_t ret2 = ethernetClient->DisableEthernetInterface();
+    EXPECT_GE(ret1, -1);
+    EXPECT_GE(ret2, -1);
+}
+
+/**
+ * @tc.name: IsEthernetEnabledTest002
+ * @tc.desc: Test IsEthernetEnabled after enable/disable operations.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EthernetClientTest, IsEthernetEnabledTest002, TestSize.Level1)
+{
+    auto ethernetClient = DelayedSingleton<EthernetClient>::GetInstance();
+    int32_t enabled = 0;
+    ethernetClient->EnableEthernetInterface();
+    int32_t ret1 = ethernetClient->IsEthernetEnabled(enabled);
+    ethernetClient->DisableEthernetInterface();
+    int32_t ret2 = ethernetClient->IsEthernetEnabled(enabled);
+    EXPECT_GE(ret1, -1);
+    EXPECT_GE(ret2, -1);
+}
+#endif
+
+} // namespace NetManagerStandard
+} // namespace OHOS

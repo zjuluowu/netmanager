@@ -1,0 +1,1730 @@
+/*
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <gtest/gtest.h>
+#ifdef GTEST_API_
+#define private public
+#define protected public
+#endif
+#include "sharing_event_callback_stub.h"
+#include "networkshare_tracker.h"
+#ifdef BLUETOOTH_MODOULE
+#include "bluetooth_pan.h"
+#include "bluetooth_remote_device.h"
+#endif
+
+namespace OHOS {
+namespace NetManagerStandard {
+namespace {
+using namespace testing::ext;
+static constexpr const char *WIFI_AP_DEFAULT_IFACE_NAME = "wlan0";
+static constexpr const char *USB_AP_DEFAULT_IFACE_NAME = "usb0";
+static constexpr const char *USB_AP_RNDIS_IFACE_NAME = "rndis0";
+static constexpr const char *BLUETOOTH_DEFAULT_IFACE_NAME = "bt-pan";
+static constexpr const char *TEST_IFACE_NAME = "testIface";
+static constexpr int32_t MAX_CALLBACK_COUNT = 100;
+std::map<int32_t, sptr<ISharingEventCallback>> g_callbackMap;
+
+class SharingEventTestCallback : public SharingEventCallbackStub {
+public:
+    inline void OnSharingStateChanged(const bool &isRunning) override
+    {
+        return;
+    }
+    inline void OnInterfaceSharingStateChanged(const SharingIfaceType &type, const std::string &iface,
+                                               const SharingIfaceState &state) override
+    {
+        return;
+    }
+    inline void OnSharingUpstreamChanged(const sptr<NetHandle> netHandle) override
+    {
+        return;
+    }
+};
+} // namespace
+
+class NetworkShareTrackerTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp();
+    void TearDown();
+    static inline sptr<ISharingEventCallback> callback_ = nullptr;
+    static inline std::shared_ptr<NetworkShareTracker> instance_ = nullptr;
+};
+
+void NetworkShareTrackerTest::SetUpTestCase() {}
+
+void NetworkShareTrackerTest::TearDownTestCase() {}
+
+void NetworkShareTrackerTest::SetUp()
+{
+    instance_ = DelayedSingleton<NetworkShareTracker>::GetInstance();
+}
+
+void NetworkShareTrackerTest::TearDown()
+{
+    NetworkShareTracker::GetInstance().Uninit();
+}
+
+HWTEST_F(NetworkShareTrackerTest, IsNetworkSharingSupported00, TestSize.Level1)
+{
+    int32_t supported;
+    auto nret = NetworkShareTracker::GetInstance().IsNetworkSharingSupported(supported);
+    EXPECT_EQ(nret, NETWORKSHARE_ERROR_IFACE_CFG_ERROR);
+}
+
+HWTEST_F(NetworkShareTrackerTest, GetSharableRegexs00, TestSize.Level1)
+{
+    SharingIfaceType type = SharingIfaceType::SHARING_BLUETOOTH;
+    std::vector<std::string> ret;
+    auto nret = NetworkShareTracker::GetInstance().GetSharableRegexs(type, ret);
+    EXPECT_EQ(nret, NETWORKSHARE_ERROR_IFACE_CFG_ERROR);
+}
+
+HWTEST_F(NetworkShareTrackerTest, SetUpstreamNetHandle00, TestSize.Level1)
+{
+    sptr<NetHandle> netHandle = new (std::nothrow) NetHandle();
+    sptr<NetAllCapabilities> netcap = nullptr;
+    sptr<NetLinkInfo> netlinkinfo = nullptr;
+    std::shared_ptr<UpstreamNetworkInfo> netinfo =
+        std::make_shared<UpstreamNetworkInfo>(netHandle, netcap, netlinkinfo);
+    NetworkShareTracker::GetInstance().SetUpstreamNetHandle(netinfo);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().mainStateMachine_, nullptr);
+}
+
+HWTEST_F(NetworkShareTrackerTest, SendMainSMEvent00, TestSize.Level1)
+{
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    auto subSM = std::make_shared<NetworkShareSubStateMachine>(WIFI_AP_DEFAULT_IFACE_NAME,
+                                                               SharingIfaceType::SHARING_WIFI, configuration);
+
+    NetworkShareTracker::GetInstance().SendMainSMEvent(subSM, 0, 0);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().mainStateMachine_, nullptr);
+}
+
+HWTEST_F(NetworkShareTrackerTest, IsInterfaceMatchType00, TestSize.Level1)
+{
+    auto ret = NetworkShareTracker::GetInstance().IsInterfaceMatchType(WIFI_AP_DEFAULT_IFACE_NAME,
+                                                                       SharingIfaceType::SHARING_WIFI);
+    EXPECT_FALSE(ret);
+}
+
+HWTEST_F(NetworkShareTrackerTest, InterfaceNameToType00, TestSize.Level1)
+{
+    std::string iface = TEST_IFACE_NAME;
+    SharingIfaceType interfaceType;
+
+    NetworkShareTracker::GetInstance().InterfaceStatusChanged(TEST_IFACE_NAME, false);
+    NetworkShareTracker::GetInstance().InterfaceAdded(TEST_IFACE_NAME);
+    NetworkShareTracker::GetInstance().InterfaceRemoved(TEST_IFACE_NAME);
+    auto ret = NetworkShareTracker::GetInstance().InterfaceNameToType(iface, interfaceType);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: Init01
+ * @tc.desc: Test NetworkShareTracker Init.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, Init01, TestSize.Level1)
+{
+    bool ret = NetworkShareTracker::GetInstance().Init();
+    EXPECT_EQ(ret, true);
+}
+
+/**
+ * @tc.name: IsNetworkSharingSupported01
+ * @tc.desc: Test NetworkShareTracker IsNetworkSharingSupported.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, IsNetworkSharingSupported01, TestSize.Level1)
+{
+    int32_t supported;
+    NetworkShareTracker::GetInstance().IsNetworkSharingSupported(supported);
+    EXPECT_EQ(supported, NETWORKSHARE_IS_SUPPORTED);
+}
+
+/**
+ * @tc.name: IsSharing01
+ * @tc.desc: Test NetworkShareTracker IsSharing.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, IsSharing01, TestSize.Level1)
+{
+    int32_t sharingStatus;
+    NetworkShareTracker::GetInstance().IsSharing(sharingStatus);
+    EXPECT_EQ(sharingStatus, NETWORKSHARE_IS_UNSHARING);
+}
+
+/**
+ * @tc.name: StartNetworkSharing01
+ * @tc.desc: Test NetworkShareTracker StartNetworkSharing.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, StartNetworkSharing01, TestSize.Level1)
+{
+    SharingIfaceType type = SharingIfaceType::SHARING_WIFI;
+    int32_t ret = NetworkShareTracker::GetInstance().StartNetworkSharing(type);
+    EXPECT_EQ(ret, NETWORKSHARE_ERROR_WIFI_SHARING);
+
+    ret = NetworkShareTracker::GetInstance().StartNetworkSharing(type);
+    EXPECT_EQ(ret, NETWORKSHARE_ERROR_WIFI_SHARING);
+
+    type = SharingIfaceType::SHARING_USB;
+    ret = NetworkShareTracker::GetInstance().StartNetworkSharing(type);
+    EXPECT_EQ(ret, NETWORKSHARE_ERROR_USB_SHARING);
+
+    type = SharingIfaceType::SHARING_BLUETOOTH;
+    ret = NetworkShareTracker::GetInstance().StartNetworkSharing(type);
+    EXPECT_EQ(ret, NETWORKSHARE_ERROR_BT_SHARING);
+}
+
+/**
+ * @tc.name: StopNetworkSharing01
+ * @tc.desc: Test NetworkShareTracker StopNetworkSharing.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, StopNetworkSharing01, TestSize.Level1)
+{
+    SharingIfaceType type = SharingIfaceType::SHARING_WIFI;
+    int32_t ret = NetworkShareTracker::GetInstance().StopNetworkSharing(type);
+    EXPECT_EQ(ret, NETWORKSHARE_ERROR_WIFI_SHARING);
+
+    type = SharingIfaceType::SHARING_USB;
+    ret = NetworkShareTracker::GetInstance().StopNetworkSharing(type);
+    EXPECT_EQ(ret, NETWORKSHARE_ERROR_USB_SHARING);
+
+    type = SharingIfaceType::SHARING_BLUETOOTH;
+    ret = NetworkShareTracker::GetInstance().StopNetworkSharing(type);
+    EXPECT_EQ(ret, NETWORKSHARE_ERROR_BT_SHARING);
+}
+
+/**
+ * @tc.name: GetSharableRegexs01
+ * @tc.desc: Test NetworkShareTracker GetSharableRegexs.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, GetSharableRegexs01, TestSize.Level1)
+{
+    SharingIfaceType type = SharingIfaceType::SHARING_BLUETOOTH;
+    std::vector<std::string> ret;
+    auto nret = NetworkShareTracker::GetInstance().GetSharableRegexs(type, ret);
+    EXPECT_EQ(nret, NETMANAGER_EXT_SUCCESS);
+
+    type = SharingIfaceType::SHARING_USB;
+    nret = NetworkShareTracker::GetInstance().GetSharableRegexs(type, ret);
+    EXPECT_EQ(nret, NETMANAGER_EXT_SUCCESS);
+
+    type = SharingIfaceType::SHARING_WIFI;
+    nret = NetworkShareTracker::GetInstance().GetSharableRegexs(type, ret);
+    EXPECT_EQ(nret, NETMANAGER_EXT_SUCCESS);
+}
+
+/**
+ * @tc.name: GetSharingState01
+ * @tc.desc: Test NetworkShareTracker GetSharingState.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, GetSharingState01, TestSize.Level1)
+{
+    SharingIfaceType type = SharingIfaceType::SHARING_WIFI;
+    SharingIfaceState state = SharingIfaceState::SHARING_NIC_SERVING;
+
+    NetworkShareTracker::GetInstance().subStateMachineMap_.clear();
+    NetworkShareTracker::GetInstance().subStateMachineMap_.insert(
+        std::make_pair(BLUETOOTH_DEFAULT_IFACE_NAME, nullptr));
+    NetworkShareTracker::GetInstance().subStateMachineMap_.insert(
+        std::make_pair(WIFI_AP_DEFAULT_IFACE_NAME, nullptr));
+
+    int32_t ret = NetworkShareTracker::GetInstance().GetSharingState(type, state);
+    NetworkShareTracker::GetInstance().subStateMachineMap_.clear();
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+    EXPECT_EQ(state, SharingIfaceState::SHARING_NIC_CAN_SERVER);
+}
+
+/**
+ * @tc.name: GetSharingState02
+ * @tc.desc: Test NetworkShareTracker GetSharingState.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, GetSharingState02, TestSize.Level1)
+{
+    SharingIfaceType type = SharingIfaceType::SHARING_WIFI;
+    SharingIfaceState state = SharingIfaceState::SHARING_NIC_SERVING;
+    NetworkShareTracker::GetInstance().subStateMachineMap_.clear();
+    NetworkShareTracker::GetInstance().CreateSubStateMachine(WIFI_AP_DEFAULT_IFACE_NAME, type, false);
+    auto itfind = NetworkShareTracker::GetInstance().subStateMachineMap_.find(WIFI_AP_DEFAULT_IFACE_NAME);
+    ASSERT_NE(itfind, NetworkShareTracker::GetInstance().subStateMachineMap_.end());
+    itfind->second->lastState_ = SUB_SM_STATE_UNAVAILABLE;
+
+    int32_t ret = NetworkShareTracker::GetInstance().GetSharingState(type, state);
+    NetworkShareTracker::GetInstance().subStateMachineMap_.clear();
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+    EXPECT_EQ(state, SharingIfaceState::SHARING_NIC_ERROR);
+
+    type = SharingIfaceType::SHARING_USB;
+    NetworkShareTracker::GetInstance().CreateSubStateMachine(USB_AP_DEFAULT_IFACE_NAME, type, false);
+    itfind = NetworkShareTracker::GetInstance().subStateMachineMap_.find(USB_AP_DEFAULT_IFACE_NAME);
+    ASSERT_NE(itfind, NetworkShareTracker::GetInstance().subStateMachineMap_.end());
+    itfind->second->lastState_ = SUB_SM_STATE_AVAILABLE;
+
+    ret = NetworkShareTracker::GetInstance().GetSharingState(type, state);
+    NetworkShareTracker::GetInstance().subStateMachineMap_.clear();
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+    EXPECT_EQ(state, SharingIfaceState::SHARING_NIC_CAN_SERVER);
+
+    type = SharingIfaceType::SHARING_BLUETOOTH;
+    NetworkShareTracker::GetInstance().CreateSubStateMachine(BLUETOOTH_DEFAULT_IFACE_NAME, type, false);
+    itfind = NetworkShareTracker::GetInstance().subStateMachineMap_.find(BLUETOOTH_DEFAULT_IFACE_NAME);
+    ASSERT_NE(itfind, NetworkShareTracker::GetInstance().subStateMachineMap_.end());
+    itfind->second->lastState_ = SUB_SM_STATE_SHARED;
+
+    ret = NetworkShareTracker::GetInstance().GetSharingState(type, state);
+    NetworkShareTracker::GetInstance().subStateMachineMap_.clear();
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+    EXPECT_EQ(state, SharingIfaceState::SHARING_NIC_SERVING);
+}
+
+/**
+ * @tc.name: GetSharingState03
+ * @tc.desc: Test NetworkShareTracker GetSharingState.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, GetSharingState03, TestSize.Level1)
+{
+    SharingIfaceType type = static_cast<SharingIfaceType>(3);
+    SharingIfaceState state = SharingIfaceState::SHARING_NIC_SERVING;
+    int32_t ret = NetworkShareTracker::GetInstance().GetSharingState(type, state);
+    EXPECT_EQ(ret, NETWORKSHARE_ERROR_UNKNOWN_TYPE);
+}
+
+/**
+ * @tc.name: GetNetSharingIfaces01
+ * @tc.desc: Test NetworkShareTracker GetNetSharingIfaces.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, GetNetSharingIfaces01, TestSize.Level1)
+{
+    SharingIfaceType type = SharingIfaceType::SHARING_WIFI;
+    SharingIfaceState state = SharingIfaceState::SHARING_NIC_ERROR;
+    std::vector<std::string> ifaces;
+    NetworkShareTracker::GetInstance().subStateMachineMap_.clear();
+    NetworkShareTracker::GetInstance().subStateMachineMap_.insert(
+        std::make_pair(BLUETOOTH_DEFAULT_IFACE_NAME, nullptr));
+
+    NetworkShareTracker::GetInstance().GetNetSharingIfaces(state, ifaces);
+    EXPECT_EQ(ifaces.size(), 0);
+
+    NetworkShareTracker::GetInstance().subStateMachineMap_.clear();
+    NetworkShareTracker::GetInstance().CreateSubStateMachine(WIFI_AP_DEFAULT_IFACE_NAME, type, false);
+    auto itfind = NetworkShareTracker::GetInstance().subStateMachineMap_.find(WIFI_AP_DEFAULT_IFACE_NAME);
+    ASSERT_NE(itfind, NetworkShareTracker::GetInstance().subStateMachineMap_.end());
+    itfind->second->lastState_ = SUB_SM_STATE_UNAVAILABLE;
+    NetworkShareTracker::GetInstance().GetNetSharingIfaces(state, ifaces);
+    NetworkShareTracker::GetInstance().subStateMachineMap_.clear();
+    EXPECT_EQ(ifaces.at(0), WIFI_AP_DEFAULT_IFACE_NAME);
+}
+
+/**
+ * @tc.name: GetNetSharingIfaces02
+ * @tc.desc: Test NetworkShareTracker GetNetSharingIfaces.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, GetNetSharingIfaces02, TestSize.Level1)
+{
+    SharingIfaceState state = static_cast<SharingIfaceState>(4);
+    std::vector<std::string> ifaces;
+    int32_t ret = NetworkShareTracker::GetInstance().GetNetSharingIfaces(state, ifaces);
+    EXPECT_EQ(ret, NETWORKSHARE_ERROR_UNKNOWN_TYPE);
+}
+
+/**
+ * @tc.name: RegisterSharingEvent01
+ * @tc.desc: Test NetworkShareTracker RegisterSharingEvent.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, RegisterSharingEvent01, TestSize.Level1)
+{
+    sptr<ISharingEventCallback> callback = nullptr;
+    int32_t ret = NetworkShareTracker::GetInstance().RegisterSharingEvent(callback);
+    EXPECT_EQ(ret, NETMANAGER_EXT_ERR_LOCAL_PTR_NULL);
+}
+
+/**
+ * @tc.name: RegisterSharingEvent02
+ * @tc.desc: Test NetworkShareTracker RegisterSharingEvent.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, RegisterSharingEvent02, TestSize.Level1)
+{
+    for (int32_t i = 0; i < MAX_CALLBACK_COUNT; i++) {
+        g_callbackMap[i] = new (std::nothrow) SharingEventTestCallback();
+    }
+
+    std::for_each(g_callbackMap.begin(), g_callbackMap.end(), [this](const auto &pair) {
+        NetworkShareTracker::GetInstance().RegisterSharingEvent(pair.second);
+        });
+    sptr<ISharingEventCallback> callback = new (std::nothrow) SharingEventTestCallback();
+    int32_t ret = NetworkShareTracker::GetInstance().RegisterSharingEvent(callback);
+    EXPECT_EQ(ret, NETWORKSHARE_ERROR_ISSHARING_CALLBACK_ERROR);
+    std::for_each(g_callbackMap.begin(), g_callbackMap.end(), [this](const auto &pair) {
+        NetworkShareTracker::GetInstance().UnregisterSharingEvent(pair.second);
+        });
+    NetworkShareTracker::GetInstance().UnregisterSharingEvent(callback);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().sharingEventCallback_.size(), 0);
+}
+
+/**
+ * @tc.name: UpstreamWanted01
+ * @tc.desc: Test NetworkShareTracker UpstreamWanted.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, UpstreamWanted01, TestSize.Level1)
+{
+    bool ret = NetworkShareTracker::GetInstance().UpstreamWanted();
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.name: ModifySharedSubStateMachineList01
+ * @tc.desc: Test NetworkShareTracker ModifySharedSubStateMachineList.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, ModifySharedSubStateMachineList01, TestSize.Level1)
+{
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    std::shared_ptr<NetworkShareSubStateMachine> subSm = std::make_shared<NetworkShareSubStateMachine>(
+        WIFI_AP_DEFAULT_IFACE_NAME, SharingIfaceType::SHARING_WIFI, configuration);
+    auto oldsize = NetworkShareTracker::GetInstance().sharedSubSM_.size();
+    NetworkShareTracker::GetInstance().ModifySharedSubStateMachineList(true, subSm);
+    auto subsm2 = std::make_shared<NetworkShareSubStateMachine>(
+        BLUETOOTH_DEFAULT_IFACE_NAME, SharingIfaceType::SHARING_BLUETOOTH, configuration);
+    NetworkShareTracker::GetInstance().ModifySharedSubStateMachineList(true, subsm2);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().sharedSubSM_.size(), oldsize + 2);
+
+    NetworkShareTracker::GetInstance().ModifySharedSubStateMachineList(false, subsm2);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().sharedSubSM_.size(), oldsize + 1);
+}
+
+/**
+ * @tc.name: GetMainStateMachine01
+ * @tc.desc: Test NetworkShareTracker GetMainStateMachine.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, GetMainStateMachine01, TestSize.Level1)
+{
+    std::shared_ptr<NetworkShareMainStateMachine> mainStateMachine =
+        NetworkShareTracker::GetInstance().GetMainStateMachine();
+    EXPECT_NE(mainStateMachine, nullptr);
+}
+
+/**
+ * @tc.name: SetUpstreamNetHandle01
+ * @tc.desc: Test NetworkShareTracker SetUpstreamNetHandle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, SetUpstreamNetHandle01, TestSize.Level1)
+{
+    std::shared_ptr<UpstreamNetworkInfo> netinfo = nullptr;
+    NetworkShareTracker::GetInstance().SetUpstreamNetHandle(netinfo);
+    EXPECT_EQ(netinfo, nullptr);
+}
+
+/**
+ * @tc.name: SetUpstreamNetHandle02
+ * @tc.desc: Test NetworkShareTracker SetUpstreamNetHandle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, SetUpstreamNetHandle02, TestSize.Level1)
+{
+    sptr<NetHandle> netHandle = new (std::nothrow) NetHandle(-1);
+    sptr<NetAllCapabilities> netcap = nullptr;
+    sptr<NetLinkInfo> netlinkinfo = nullptr;
+    std::shared_ptr<UpstreamNetworkInfo> netinfo =
+        std::make_shared<UpstreamNetworkInfo>(netHandle, netcap, netlinkinfo);
+    NetworkShareTracker::GetInstance().SetUpstreamNetHandle(netinfo);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().mainStateMachine_->errorType_, CMD_SET_DNS_FORWARDERS_ERROR);
+}
+
+/**
+ * @tc.name: SetUpstreamNetHandle03
+ * @tc.desc: Test NetworkShareTracker SetUpstreamNetHandle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, SetUpstreamNetHandle03, TestSize.Level1)
+{
+    sptr<NetHandle> netHandle = new (std::nothrow) NetHandle();
+    sptr<NetAllCapabilities> netcap = nullptr;
+    sptr<NetLinkInfo> netlinkinfo = nullptr;
+    std::shared_ptr<UpstreamNetworkInfo> netinfo =
+        std::make_shared<UpstreamNetworkInfo>(netHandle, netcap, netlinkinfo);
+    NetworkShareTracker::GetInstance().mainStateMachine_->SwitcheToErrorState(NETWORKSHARING_SHARING_NO_ERROR);
+    NetworkShareTracker::GetInstance().SetUpstreamNetHandle(netinfo);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().mainStateMachine_->errorType_, NETWORKSHARING_SHARING_NO_ERROR);
+}
+
+/**
+ * @tc.name: GetUpstreamInfo01
+ * @tc.desc: Test NetworkShareTracker GetUpstreamInfo.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, GetUpstreamInfo01, TestSize.Level1)
+{
+    std::shared_ptr<UpstreamNetworkInfo> upstreamInfo = nullptr;
+
+    NetworkShareTracker::GetInstance().GetUpstreamInfo(upstreamInfo);
+    EXPECT_NE(upstreamInfo, nullptr);
+}
+
+/**
+ * @tc.name: NotifyDownstreamsHasNewUpstreamIface01
+ * @tc.desc: Test NetworkShareTracker NotifyDownstreamsHasNewUpstreamIface.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, NotifyDownstreamsHasNewUpstreamIface01, TestSize.Level1)
+{
+    sptr<NetHandle> netHandle = nullptr;
+    sptr<NetAllCapabilities> netcap = nullptr;
+    sptr<NetLinkInfo> netlinkinfo = nullptr;
+    std::shared_ptr<UpstreamNetworkInfo> netinfo =
+        std::make_shared<UpstreamNetworkInfo>(netHandle, netcap, netlinkinfo);
+
+    NetworkShareTracker::GetInstance().NotifyDownstreamsHasNewUpstreamIface(netinfo);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().upstreamInfo_.get(), netinfo.get());
+}
+
+/**
+ * @tc.name: GetSharedSubSMTraffic01
+ * @tc.desc: Test NetworkShareTracker GetSharedSubSMTraffic.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, GetSharedSubSMTraffic01, TestSize.Level1)
+{
+    TrafficType type = TrafficType::TRAFFIC_ALL;
+    int32_t kbByte;
+    NetworkShareTracker::GetInstance().GetSharedSubSMTraffic(type, kbByte);
+    EXPECT_GE(kbByte, 0);
+}
+
+/**
+ * @tc.name: GetSharedSubSMTraffic02
+ * @tc.desc: Test NetworkShareTracker GetSharedSubSMTraffic.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, GetSharedSubSMTraffic02, TestSize.Level1)
+{
+    TrafficType type = TrafficType::TRAFFIC_RX;
+    int32_t kbByte;
+    NetworkShareTracker::GetInstance().GetSharedSubSMTraffic(type, kbByte);
+    EXPECT_GE(kbByte, 0);
+}
+
+/**
+ * @tc.name: GetSharedSubSMTraffic03
+ * @tc.desc: Test NetworkShareTracker GetSharedSubSMTraffic.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NetworkShareTrackerTest, GetSharedSubSMTraffic03, TestSize.Level1)
+{
+    TrafficType type = TrafficType::TRAFFIC_TX;
+    int32_t kbByte;
+    NetworkShareTracker::GetInstance().GetSharedSubSMTraffic(type, kbByte);
+    EXPECT_GE(kbByte, 0);
+}
+
+#ifdef WIFI_MODOULE
+HWTEST_F(NetworkShareTrackerTest, OnWifiHotspotStateChanged01, TestSize.Level1)
+{
+    int32_t state = 2;
+    auto wifiHotspotCallback = sptr<NetworkShareTracker::WifiHotspotCallback>::MakeSptr();
+    wifiHotspotCallback->OnHotspotStateChanged(state);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().curWifiState_, Wifi::ApState::AP_STATE_STARTING);
+
+    state = 3;
+    wifiHotspotCallback->OnHotspotStateChanged(state);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().curWifiState_, Wifi::ApState::AP_STATE_STARTED);
+
+    state = 4;
+    wifiHotspotCallback->OnHotspotStateChanged(state);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().curWifiState_, Wifi::ApState::AP_STATE_CLOSING);
+
+    state = 5;
+    wifiHotspotCallback->OnHotspotStateChanged(state);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().curWifiState_, Wifi::ApState::AP_STATE_CLOSED);
+
+    state = 0;
+    wifiHotspotCallback->OnHotspotStateChanged(state);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().curWifiState_, Wifi::ApState::AP_STATE_NONE);
+}
+#endif
+
+HWTEST_F(NetworkShareTrackerTest, EnableNetSharingInternal01, TestSize.Level1)
+{
+    SharingIfaceType type = static_cast<SharingIfaceType>(3);
+    auto ret = NetworkShareTracker::GetInstance().EnableNetSharingInternal(type, false);
+    EXPECT_EQ(ret, NETWORKSHARE_ERROR_UNKNOWN_TYPE);
+}
+
+HWTEST_F(NetworkShareTrackerTest, Sharing01, TestSize.Level1)
+{
+    std::string iface = "testIface";
+    int32_t reqState = 0;
+    int32_t ret = NetworkShareTracker::GetInstance().Sharing(iface, reqState);
+    EXPECT_EQ(NETWORKSHARE_ERROR_UNKNOWN_IFACE, ret);
+}
+
+HWTEST_F(NetworkShareTrackerTest, EnableWifiSubStateMachine01, TestSize.Level1)
+{
+    NetworkShareTracker::GetInstance().subStateMachineMap_.insert(
+        std::make_pair(BLUETOOTH_DEFAULT_IFACE_NAME, nullptr));
+    NetworkShareTracker::GetInstance().subStateMachineMap_.insert(
+        std::make_pair(WIFI_AP_DEFAULT_IFACE_NAME, nullptr));
+    NetworkShareTracker::GetInstance().EnableWifiSubStateMachine();
+    auto iter = NetworkShareTracker::GetInstance().subStateMachineMap_.find(WIFI_AP_DEFAULT_IFACE_NAME);
+    EXPECT_NE(iter, NetworkShareTracker::GetInstance().subStateMachineMap_.end());
+}
+
+HWTEST_F(NetworkShareTrackerTest, EnableBluetoothSubStateMachine01, TestSize.Level1)
+{
+    NetworkShareTracker::GetInstance().EnableBluetoothSubStateMachine();
+    auto iter = NetworkShareTracker::GetInstance().subStateMachineMap_.find(BLUETOOTH_DEFAULT_IFACE_NAME);
+    EXPECT_NE(iter, NetworkShareTracker::GetInstance().subStateMachineMap_.end());
+}
+
+HWTEST_F(NetworkShareTrackerTest, StopDnsProxy01, TestSize.Level1)
+{
+    NetworkShareTracker::GetInstance().isStartDnsProxy_ = true;
+    NetworkShareTracker::GetInstance().StopDnsProxy();
+    EXPECT_FALSE(NetworkShareTracker::GetInstance().isStartDnsProxy_);
+}
+
+HWTEST_F(NetworkShareTrackerTest, StopSubStateMachine01, TestSize.Level1)
+{
+    std::string iface = TEST_IFACE_NAME;
+    SharingIfaceType interfaceType = static_cast<SharingIfaceType>(3);
+    NetworkShareTracker::GetInstance().StopSubStateMachine(iface, interfaceType);
+    auto itfind = NetworkShareTracker::GetInstance().subStateMachineMap_.find(TEST_IFACE_NAME);
+    EXPECT_EQ(itfind, NetworkShareTracker::GetInstance().subStateMachineMap_.end());
+}
+
+HWTEST_F(NetworkShareTrackerTest, InterfaceNameToType01, TestSize.Level1)
+{
+    std::string iface = TEST_IFACE_NAME;
+    SharingIfaceType interfaceType;
+    auto ret = NetworkShareTracker::GetInstance().InterfaceNameToType(iface, interfaceType);
+    EXPECT_FALSE(ret);
+
+    iface = WIFI_AP_DEFAULT_IFACE_NAME;
+    NetworkShareTracker::GetInstance().InterfaceNameToType(iface, interfaceType);
+    EXPECT_EQ(interfaceType, SharingIfaceType::SHARING_WIFI);
+
+    iface = USB_AP_DEFAULT_IFACE_NAME;
+    NetworkShareTracker::GetInstance().InterfaceNameToType(iface, interfaceType);
+    EXPECT_EQ(interfaceType, SharingIfaceType::SHARING_USB);
+
+    iface = BLUETOOTH_DEFAULT_IFACE_NAME;
+    NetworkShareTracker::GetInstance().InterfaceNameToType(iface, interfaceType);
+    EXPECT_EQ(interfaceType, SharingIfaceType::SHARING_BLUETOOTH);
+}
+
+HWTEST_F(NetworkShareTrackerTest, IsHandleNetlinkEvent01, TestSize.Level1)
+{
+    SharingIfaceType type;
+    bool ret = false;
+#ifdef WIFI_MODOULE
+    type = SharingIfaceType::SHARING_WIFI;
+    NetworkShareTracker::GetInstance().curWifiState_ = Wifi::ApState::AP_STATE_CLOSING;
+    ret = NetworkShareTracker::GetInstance().IsHandleNetlinkEvent(type, false);
+    EXPECT_TRUE(ret);
+#endif
+#ifdef USB_MODOULE
+    type = SharingIfaceType::SHARING_USB;
+    NetworkShareTracker::GetInstance().curUsbState_ = UsbShareState::USB_CLOSING;
+    ret = NetworkShareTracker::GetInstance().IsHandleNetlinkEvent(type, false);
+    EXPECT_TRUE(ret);
+#endif
+    NetworkShareTracker::GetInstance().InterfaceStatusChanged(TEST_IFACE_NAME, false);
+    NetworkShareTracker::GetInstance().InterfaceStatusChanged(WIFI_AP_DEFAULT_IFACE_NAME, false);
+#ifdef WIFI_MODOULE
+    NetworkShareTracker::GetInstance().curWifiState_ = Wifi::ApState::AP_STATE_STARTING;
+#endif
+    NetworkShareTracker::GetInstance().InterfaceStatusChanged(WIFI_AP_DEFAULT_IFACE_NAME, true);
+    NetworkShareTracker::GetInstance().InterfaceStatusChanged(USB_AP_RNDIS_IFACE_NAME, true);
+
+    NetworkShareTracker::GetInstance().InterfaceAdded(TEST_IFACE_NAME);
+    NetworkShareTracker::GetInstance().InterfaceAdded(WIFI_AP_DEFAULT_IFACE_NAME);
+
+    NetworkShareTracker::GetInstance().InterfaceRemoved(TEST_IFACE_NAME);
+    NetworkShareTracker::GetInstance().InterfaceAdded(WIFI_AP_DEFAULT_IFACE_NAME);
+
+#ifdef BLUETOOTH_MODOULE
+    type = SharingIfaceType::SHARING_BLUETOOTH;
+    NetworkShareTracker::GetInstance().curBluetoothState_ = Bluetooth::BTConnectState::CONNECTING;
+    ret = NetworkShareTracker::GetInstance().IsHandleNetlinkEvent(type, true);
+    EXPECT_TRUE(ret);
+#endif
+
+    type = static_cast<SharingIfaceType>(3);
+    ret = NetworkShareTracker::GetInstance().IsHandleNetlinkEvent(type, false);
+    EXPECT_FALSE(ret);
+}
+
+HWTEST_F(NetworkShareTrackerTest, SendSharingUpstreamChange01, TestSize.Level1)
+{
+    NetworkShareTracker::GetInstance().sharingEventCallback_.clear();
+    NetworkShareTracker::GetInstance().SendSharingUpstreamChange(nullptr);
+
+    sptr<ISharingEventCallback> callback = new (std::nothrow) SharingEventTestCallback();
+    NetworkShareTracker::GetInstance().RegisterSharingEvent(callback);
+    NetworkShareTracker::GetInstance().SendSharingUpstreamChange(nullptr);
+    EXPECT_GE(NetworkShareTracker::GetInstance().sharingEventCallback_.size(), 0);
+}
+
+HWTEST_F(NetworkShareTrackerTest, SubSmStateToExportState01, TestSize.Level1)
+{
+    int state = SUB_SM_STATE_AVAILABLE;
+    auto ret = NetworkShareTracker::GetInstance().SubSmStateToExportState(state);
+    EXPECT_EQ(ret, SharingIfaceState::SHARING_NIC_CAN_SERVER);
+
+    state = SUB_SM_STATE_SHARED;
+    ret = NetworkShareTracker::GetInstance().SubSmStateToExportState(state);
+    EXPECT_EQ(ret, SharingIfaceState::SHARING_NIC_SERVING);
+
+    state = SUB_SM_STATE_UNAVAILABLE;
+    ret = NetworkShareTracker::GetInstance().SubSmStateToExportState(state);
+    EXPECT_EQ(ret, SharingIfaceState::SHARING_NIC_ERROR);
+
+    state = 4;
+    ret = NetworkShareTracker::GetInstance().SubSmStateToExportState(state);
+    EXPECT_EQ(ret, SharingIfaceState::SHARING_NIC_ERROR);
+}
+
+HWTEST_F(NetworkShareTrackerTest, OnChangeSharingState01, TestSize.Level1)
+{
+    NetworkShareTracker networkShareTracker;
+    networkShareTracker.clientRequestsBitMask_ = (1U << static_cast<uint32_t>(SharingIfaceType::SHARING_WIFI));
+    networkShareTracker.OnChangeSharingState(SharingIfaceType::SHARING_WIFI, false);
+    EXPECT_EQ(networkShareTracker.clientRequestsBitMask_, 0);
+}
+
+HWTEST_F(NetworkShareTrackerTest, NetworkShareTrackerBranchTest01, TestSize.Level1)
+{
+#ifdef BLUETOOTH_MODOULE
+    NetworkShareTracker::GetInstance().SetBluetoothState(Bluetooth::BTConnectState::CONNECTING);
+#endif
+
+    NetworkShareTracker::NetsysCallback callback;
+    std::string testString = "";
+    int testNumber = 0;
+    auto ret = callback.OnInterfaceAddressUpdated(testString, testString, testNumber, testNumber);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+
+    ret = callback.OnInterfaceAddressRemoved(testString, testString, testNumber, testNumber);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+
+    ret = callback.OnInterfaceAdded(testString);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+
+    ret = callback.OnInterfaceRemoved(testString);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+
+    ret = callback.OnInterfaceChanged(testString, false);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+
+    ret = callback.OnInterfaceLinkStateChanged(testString, false);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+
+    ret = callback.OnRouteChanged(false, testString, testString, testString);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+
+    NetsysControllerCallback::DhcpResult dhcpResult;
+    ret = callback.OnDhcpSuccess(dhcpResult);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+
+    ret = callback.OnBandwidthReachedLimit(testString, testString);
+    EXPECT_EQ(ret, NETMANAGER_EXT_SUCCESS);
+
+#ifdef BLUETOOTH_MODOULE
+    std::shared_ptr<NetworkShareTracker::SharingPanObserver> observer =
+        std::make_shared<NetworkShareTracker::SharingPanObserver>();
+    Bluetooth::BluetoothRemoteDevice device;
+    int32_t cause = 0;
+    int32_t role = 1;
+    observer->OnConnectionStateChanged(device, static_cast<int32_t>(Bluetooth::BTConnectState::CONNECTING), cause,
+                                       role);
+    observer->OnConnectionStateChanged(device, static_cast<int32_t>(Bluetooth::BTConnectState::CONNECTED), cause, role);
+    observer->OnConnectionStateChanged(device, static_cast<int32_t>(Bluetooth::BTConnectState::DISCONNECTING), cause,
+                                       role);
+    observer->OnConnectionStateChanged(device, static_cast<int32_t>(Bluetooth::BTConnectState::DISCONNECTED), cause,
+                                       role);
+    int32_t invalidValue = 100;
+    observer->OnConnectionStateChanged(device, invalidValue, cause, role);
+#endif
+}
+
+#ifdef WIFI_MODOULE
+HWTEST_F(NetworkShareTrackerTest, StartIdleApStopTimerTest, TestSize.Level1)
+{
+    NetworkShareTracker::GetInstance().StartIdleApStopTimer();
+    EXPECT_NE(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+    NetworkShareTracker::GetInstance().StartIdleApStopTimer();
+    EXPECT_NE(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+}
+
+HWTEST_F(NetworkShareTrackerTest, StopIdleApStopTimerTest, TestSize.Level1)
+{
+    NetworkShareTracker::GetInstance().StopIdleApStopTimer();
+    EXPECT_EQ(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+    NetworkShareTracker::GetInstance().StopIdleApStopTimer();
+    EXPECT_EQ(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+}
+
+HWTEST_F(NetworkShareTrackerTest, HandleIdleApStopTimerTest, TestSize.Level1)
+{
+    NetworkShareTracker::GetInstance().powerConnected_ = false;
+    NetworkShareTracker::GetInstance().staConnected_ = false;
+    NetworkShareTracker::GetInstance().curWifiState_ = Wifi::ApState::AP_STATE_STARTED;
+    NetworkShareTracker::GetInstance().HandleIdleApStopTimer();
+    EXPECT_NE(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+    NetworkShareTracker::GetInstance().powerConnected_ = true;
+    NetworkShareTracker::GetInstance().HandleIdleApStopTimer();
+    EXPECT_EQ(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+}
+
+HWTEST_F(NetworkShareTrackerTest, OnWifiHotspotStaJoinTest, TestSize.Level1)
+{
+    Wifi::StationInfo sta{};
+    auto wifiHotspotCallback = sptr<NetworkShareTracker::WifiHotspotCallback>::MakeSptr();
+    wifiHotspotCallback->OnHotspotStaJoin(sta);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().staConnected_, true);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+}
+
+HWTEST_F(NetworkShareTrackerTest, OnWifiHotspotStaLeaveTest, TestSize.Level1)
+{
+    Wifi::StationInfo sta{};
+    auto wifiHotspotCallback = sptr<NetworkShareTracker::WifiHotspotCallback>::MakeSptr();
+    NetworkShareTracker::GetInstance().powerConnected_ = true;
+    NetworkShareTracker::GetInstance().staConnected_ = true;
+    NetworkShareTracker::GetInstance().curWifiState_ = Wifi::ApState::AP_STATE_STARTED;
+    wifiHotspotCallback->OnHotspotStaLeave(sta);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+}
+
+HWTEST_F(NetworkShareTrackerTest, OnPowerConnectedTest, TestSize.Level1)
+{
+    NetworkShareTracker::GetInstance().OnPowerConnected();
+    EXPECT_EQ(NetworkShareTracker::GetInstance().powerConnected_, true);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+}
+
+HWTEST_F(NetworkShareTrackerTest, OnPowerDisConnectedTest, TestSize.Level1)
+{
+    NetworkShareTracker::GetInstance().staConnected_ = false;
+    NetworkShareTracker::GetInstance().curWifiState_ = Wifi::ApState::AP_STATE_STARTED;
+    NetworkShareTracker::GetInstance().OnPowerDisConnected();
+    EXPECT_EQ(NetworkShareTracker::GetInstance().powerConnected_, false);
+    EXPECT_NE(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+    NetworkShareTracker::GetInstance().curWifiState_ = Wifi::ApState::AP_STATE_CLOSED;
+    NetworkShareTracker::GetInstance().OnPowerDisConnected();
+    EXPECT_EQ(NetworkShareTracker::GetInstance().powerConnected_, false);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+}
+
+HWTEST_F(NetworkShareTrackerTest, HandleHotSpotStartedTest, TestSize.Level1)
+{
+    NetworkShareTracker::GetInstance().HandleHotSpotStarted();
+    EXPECT_EQ(NetworkShareTracker::GetInstance().staConnected_, false);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+}
+
+HWTEST_F(NetworkShareTrackerTest, HandleHotSpotClosedTest, TestSize.Level1)
+{
+    NetworkShareTracker::GetInstance().HandleHotSpotClosed();
+    EXPECT_EQ(NetworkShareTracker::GetInstance().staConnected_, false);
+    EXPECT_EQ(NetworkShareTracker::GetInstance().idleApStopTimerId_, 0);
+}
+#endif
+
+HWTEST_F(NetworkShareTrackerTest, StartNetworkSharing02, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.clientRequestsBitMask_ = (1U << static_cast<uint32_t>(SharingIfaceType::SHARING_WIFI));
+    SharingIfaceType type = SharingIfaceType::SHARING_NONE;
+    int32_t ret = networksharetracker.StartNetworkSharing(type);
+    type = SharingIfaceType::SHARING_WIFI;
+    ret = networksharetracker.StartNetworkSharing(type);
+    EXPECT_EQ(ret, NETWORKSHARE_ERROR_WIFI_SHARING);
+}
+ 
+HWTEST_F(NetworkShareTrackerTest, InterfaceStatusChanged01, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.isInit = true;
+    std::string iface;
+    networksharetracker.InterfaceStatusChanged(iface, true);
+    EXPECT_TRUE(networksharetracker.isInit);
+}
+ 
+HWTEST_F(NetworkShareTrackerTest, CheckIfUpUsbIface01, TestSize.Level1)
+{
+    std::string iface;
+    EXPECT_TRUE(NetworkShareTracker::GetInstance().CheckIfUpUsbIface(iface));
+}
+ 
+HWTEST_F(NetworkShareTrackerTest, InterfaceRemoved01, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.isInit = true;
+    std::string iface = "";
+    networksharetracker.InterfaceRemoved(iface);
+    EXPECT_TRUE(networksharetracker.isInit);
+}
+ 
+HWTEST_F(NetworkShareTrackerTest, SendGlobalSharingStateChange01, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    sptr<ISharingEventCallback> callback;
+    networksharetracker.sharingEventCallback_.push_back(callback);
+    networksharetracker.subStateMachineMap_.emplace("key1",
+        std::shared_ptr<NetworkShareTracker::NetSharingSubSmState>());
+    networksharetracker.SendGlobalSharingStateChange();
+    ASSERT_EQ(networksharetracker.sharingEventCallback_.back(), nullptr);
+}
+ 
+HWTEST_F(NetworkShareTrackerTest, SendGlobalSharingStateChange02, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    sptr<ISharingEventCallback> callback;
+    networksharetracker.sharingEventCallback_.push_back(callback);
+    networksharetracker.SendGlobalSharingStateChange();
+    ASSERT_EQ(networksharetracker.sharingEventCallback_.back(), nullptr);
+}
+ 
+HWTEST_F(NetworkShareTrackerTest, SendGlobalSharingStateChange03, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    sptr<ISharingEventCallback> callback;
+    networksharetracker.sharingEventCallback_.push_back(callback);
+    networksharetracker.isNetworkSharing_ = true;
+    networksharetracker.SendGlobalSharingStateChange();
+    ASSERT_EQ(networksharetracker.sharingEventCallback_.back(), nullptr);
+}
+ 
+HWTEST_F(NetworkShareTrackerTest, SendIfaceSharingStateChange01, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    sptr<ISharingEventCallback> callback;
+    networksharetracker.sharingEventCallback_.push_back(callback);
+    SharingIfaceType type = SharingIfaceType::SHARING_NONE;
+    std::string iface;
+    SharingIfaceState state = SharingIfaceState::SHARING_NIC_ERROR;
+    networksharetracker.SendIfaceSharingStateChange(type, iface, state);
+    ASSERT_EQ(networksharetracker.sharingEventCallback_.back(), nullptr);
+}
+ 
+HWTEST_F(NetworkShareTrackerTest, SendSharingUpstreamChange02, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    sptr<ISharingEventCallback> callback;
+    networksharetracker.sharingEventCallback_.push_back(callback);
+    NetHandle myNetHandle;
+    sptr<NetHandle> netHandle = new NetHandle(myNetHandle);
+    networksharetracker.SendSharingUpstreamChange(netHandle);
+    ASSERT_EQ(networksharetracker.sharingEventCallback_.back(), nullptr);
+}
+ 
+HWTEST_F(NetworkShareTrackerTest, RestartResume01, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    SharingIfaceType type = SharingIfaceType::SHARING_NONE;
+    networksharetracker.clientRequestsBitMask_ = (1U << static_cast<uint32_t>(type));
+    networksharetracker.isStartDnsProxy_ = true;
+    networksharetracker.RestartResume();
+    EXPECT_EQ(networksharetracker.clientRequestsBitMask_, 0);
+}
+ 
+HWTEST_F(NetworkShareTrackerTest, RestartResume02, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    SharingIfaceType type = SharingIfaceType::SHARING_WIFI;
+    networksharetracker.clientRequestsBitMask_ = (1U << static_cast<uint32_t>(type));
+    std::string ifaceName = "123";
+    SharingIfaceType interfaceType = SharingIfaceType::SHARING_NONE;
+    std::shared_ptr<NetworkShareConfiguration> configuration;
+    std::shared_ptr<NetworkShareSubStateMachine> test =
+        std::make_shared<NetworkShareSubStateMachine>(ifaceName, interfaceType, configuration);
+    networksharetracker.sharedSubSM_.push_back(test);
+    networksharetracker.RestartResume();
+    EXPECT_NE(networksharetracker.clientRequestsBitMask_, 0);
+    EXPECT_FALSE(networksharetracker.isStartDnsProxy_);
+    EXPECT_NE(networksharetracker.sharedSubSM_.size(), 0);
+}
+
+HWTEST_F(NetworkShareTrackerTest, RestartResume03, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    SharingIfaceType type = SharingIfaceType::SHARING_WIFI;
+    networksharetracker.clientRequestsBitMask_ = (1U << static_cast<uint32_t>(type));
+    std::string ifaceName = "123";
+    SharingIfaceType interfaceType = SharingIfaceType::SHARING_NONE;
+    networksharetracker.isStartDnsProxy_ = true;
+    networksharetracker.sharedSubSM_.push_back(nullptr);
+    networksharetracker.RestartResume();
+    EXPECT_NE(networksharetracker.clientRequestsBitMask_, 0);
+    EXPECT_NE(networksharetracker.sharedSubSM_.size(), 0);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_InterfaceStatusChanged_NotInit
+ * @tc.name: Test InterfaceStatusChanged when isInit is false
+ * @tc.desc: Verify that InterfaceStatusChanged returns early when isInit is false
+ */
+HWTEST_F(NetworkShareTrackerTest, InterfaceStatusChanged_NotInit, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.isInit = false;
+    std::string iface = "wlan0";
+    networksharetracker.InterfaceStatusChanged(iface, true);
+    // Should return early without processing
+    EXPECT_FALSE(networksharetracker.isInit);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_InterfaceStatusChanged_ClatInterfaceUp
+ * @tc.name: Test InterfaceStatusChanged when clat interface (tunv4-) is up
+ * @tc.desc: Verify that InterfaceStatusChanged handles clat interface up event
+ */
+HWTEST_F(NetworkShareTrackerTest, InterfaceStatusChanged_ClatInterfaceUp, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.isInit = true;
+    networksharetracker.networkShareTrackerFfrtQueue_ = std::make_shared<ffrt::queue>("test_queue");
+    std::string clatIface = "tunv4-rmnet0";
+    networksharetracker.InterfaceStatusChanged(clatIface, true);
+    // Should handle clat interface up event
+    EXPECT_TRUE(networksharetracker.IsClatInterface(clatIface));
+    EXPECT_TRUE(networksharetracker.isInit);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_InterfaceStatusChanged_ClatInterfaceDown
+ * @tc.name: Test InterfaceStatusChanged when clat interface (tunv4-) is down
+ * @tc.desc: Verify that InterfaceStatusChanged handles clat interface down event
+ */
+HWTEST_F(NetworkShareTrackerTest, InterfaceStatusChanged_ClatInterfaceDown, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.isInit = true;
+    networksharetracker.networkShareTrackerFfrtQueue_ = std::make_shared<ffrt::queue>("test_queue");
+    std::string clatIface = "tunv4-rmnet0";
+    networksharetracker.InterfaceStatusChanged(clatIface, false);
+    // Should handle clat interface down event
+    EXPECT_TRUE(networksharetracker.IsClatInterface(clatIface));
+    EXPECT_TRUE(networksharetracker.isInit);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_InterfaceStatusChanged_NotDownstream
+ * @tc.name: Test InterfaceStatusChanged when interface is not downstream
+ * @tc.desc: Verify that InterfaceStatusChanged returns when interface is not downstream
+ */
+HWTEST_F(NetworkShareTrackerTest, InterfaceStatusChanged_NotDownstream, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.isInit = true;
+    std::string iface = "unknown_iface";
+    networksharetracker.InterfaceStatusChanged(iface, true);
+    // Should return early when interface is not downstream
+    EXPECT_TRUE(networksharetracker.isInit);
+    SharingIfaceType interfaceType;
+    EXPECT_FALSE(networksharetracker.InterfaceNameToType(iface, interfaceType));
+}
+
+/**
+ * @tc.number: NetworkShareTracker_InterfaceStatusChanged_WifiUp
+ * @tc.name: Test InterfaceStatusChanged when wifi interface is up
+ * @tc.desc: Verify that InterfaceStatusChanged handles wifi interface up event
+ */
+HWTEST_F(NetworkShareTrackerTest, InterfaceStatusChanged_WifiUp, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.isInit = true;
+    networksharetracker.networkShareTrackerFfrtQueue_ = std::make_shared<ffrt::queue>("test_queue");
+    networksharetracker.configuration_ = std::make_shared<NetworkShareConfiguration>();
+#ifdef WIFI_MODOULE
+    networksharetracker.curWifiState_ = Wifi::ApState::AP_STATE_STARTING;
+#endif
+    std::string iface = "wlan0";
+    networksharetracker.InterfaceStatusChanged(iface, true);
+    // Should create sub state machine for wifi interface
+    EXPECT_TRUE(networksharetracker.isInit);
+    EXPECT_NE(networksharetracker.configuration_, nullptr);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_InterfaceStatusChanged_WifiDown
+ * @tc.name: Test InterfaceStatusChanged when wifi interface is down
+ * @tc.desc: Verify that InterfaceStatusChanged handles wifi interface down event
+ */
+HWTEST_F(NetworkShareTrackerTest, InterfaceStatusChanged_WifiDown, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.isInit = true;
+    networksharetracker.networkShareTrackerFfrtQueue_ = std::make_shared<ffrt::queue>("test_queue");
+#ifdef WIFI_MODOULE
+    networksharetracker.curWifiState_ = Wifi::ApState::AP_STATE_CLOSING;
+#endif
+    std::string iface = "wlan0";
+    networksharetracker.InterfaceStatusChanged(iface, false);
+    // Should stop sub state machine for wifi interface
+    EXPECT_TRUE(networksharetracker.isInit);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_InterfaceStatusChanged_UsbUp
+ * @tc.name: Test InterfaceStatusChanged when usb interface is up
+ * @tc.desc: Verify that InterfaceStatusChanged handles usb interface up event
+ */
+HWTEST_F(NetworkShareTrackerTest, InterfaceStatusChanged_UsbUp, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.isInit = true;
+    networksharetracker.networkShareTrackerFfrtQueue_ = std::make_shared<ffrt::queue>("test_queue");
+    networksharetracker.configuration_ = std::make_shared<NetworkShareConfiguration>();
+#ifdef USB_MODOULE
+    networksharetracker.curUsbState_ = UsbShareState::USB_SHARING;
+#endif
+    std::string iface = "usb0";
+    networksharetracker.InterfaceStatusChanged(iface, true);
+    // Should call Sharing for usb interface
+    EXPECT_TRUE(networksharetracker.isInit);
+    EXPECT_NE(networksharetracker.configuration_, nullptr);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_InterfaceStatusChanged_ConfigurationNull
+ * @tc.name: Test InterfaceStatusChanged when configuration_ is null
+ * @tc.desc: Verify that InterfaceStatusChanged returns when configuration_ is null
+ */
+HWTEST_F(NetworkShareTrackerTest, InterfaceStatusChanged_ConfigurationNull, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.isInit = true;
+    networksharetracker.networkShareTrackerFfrtQueue_ = std::make_shared<ffrt::queue>("test_queue");
+    networksharetracker.configuration_ = nullptr;
+#ifdef WIFI_MODOULE
+    networksharetracker.curWifiState_ = Wifi::ApState::AP_STATE_STARTING;
+#endif
+    std::string iface = "wlan0";
+    networksharetracker.InterfaceStatusChanged(iface, true);
+    // Should return early when configuration_ is null
+    EXPECT_TRUE(networksharetracker.isInit);
+    EXPECT_EQ(networksharetracker.configuration_, nullptr);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_IsClatInterface
+ * @tc.name: Test IsClatInterface
+ * @tc.desc: Verify that IsClatInterface correctly identifies clat interfaces
+ */
+HWTEST_F(NetworkShareTrackerTest, IsClatInterface, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    std::string clatIface = "tunv4-rmnet0";
+    EXPECT_TRUE(networksharetracker.IsClatInterface(clatIface));
+
+    std::string nonClatIface = "wlan0";
+    EXPECT_FALSE(networksharetracker.IsClatInterface(nonClatIface));
+
+    std::string similarIface = "tunv40";
+    EXPECT_FALSE(networksharetracker.IsClatInterface(similarIface));
+}
+
+/**
+ * @tc.number: NetworkShareTracker_GetV6IfaceFromClat
+ * @tc.name: Test GetV6IfaceFromClat
+ * @tc.desc: Verify that GetV6IfaceFromClat correctly extracts v6 interface from clat interface
+ */
+HWTEST_F(NetworkShareTrackerTest, GetV6IfaceFromClat, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    std::string clatIface = "tunv4-rmnet0";
+    std::string v6Iface = networksharetracker.GetV6IfaceFromClat(clatIface);
+    EXPECT_EQ(v6Iface, "rmnet0");
+
+    std::string nonClatIface = "wlan0";
+    v6Iface = networksharetracker.GetV6IfaceFromClat(nonClatIface);
+    EXPECT_EQ(v6Iface, "");
+}
+
+/**
+ * @tc.number: NetworkShareTracker_GetInterfaceIndexByName
+ * @tc.name: Test GetInterfaceIndexByName
+ * @tc.desc: Verify that GetInterfaceIndexByName returns correct interface index
+ */
+HWTEST_F(NetworkShareTrackerTest, GetInterfaceIndexByName, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    // Test with empty interface name
+    uint32_t index = networksharetracker.GetInterfaceIndexByName("");
+    EXPECT_EQ(index, 0);
+
+    // Test with non-existent interface
+    index = networksharetracker.GetInterfaceIndexByName("nonexistent_iface_xyz");
+    EXPECT_EQ(index, 0);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceAdded
+ * @tc.name: Test HandleClatInterfaceAdded
+ * @tc.desc: Verify that HandleClatInterfaceAdded correctly handles clat interface added event
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceAdded, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    // Test with empty clat interface name
+    std::string clatIface = "";
+    networksharetracker.HandleClatInterfaceAdded(clatIface);
+    // Verify that sharedSubSM_ is empty when no subSM is added
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 0);
+
+    // Test with valid clat interface but no matching subSM
+    clatIface = "tunv4-rmnet0";
+    networksharetracker.HandleClatInterfaceAdded(clatIface);
+    // Verify that sharedSubSM_ is still empty
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 0);
+
+    // Test with valid clat interface and matching subSM with different upstream
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    auto subSM = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    networksharetracker.sharedSubSM_.push_back(subSM);
+    clatIface = "tunv4-rmnet0";
+    networksharetracker.HandleClatInterfaceAdded(clatIface);
+    // Verify that sharedSubSM_ still has 1 element (not processed due to upstream mismatch)
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+
+    // Test with valid clat interface and matching subSM with same upstream
+    networksharetracker.sharedSubSM_.clear();
+    auto subSM2 = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    networksharetracker.sharedSubSM_.push_back(subSM2);
+    // Set upstream interface name through reflection
+    networksharetracker.HandleClatInterfaceAdded(clatIface);
+    // Verify that sharedSubSM_ still has 1 element
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceRemoved
+ * @tc.name: Test HandleClatInterfaceRemoved
+ * @tc.desc: Verify that HandleClatInterfaceRemoved correctly handles clat interface removed event
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceRemoved, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    // Test with empty clat interface name
+    std::string clatIface = "";
+    networksharetracker.HandleClatInterfaceRemoved(clatIface);
+    // Verify that sharedSubSM_ is empty when clat interface is empty
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 0);
+
+    // Test with valid clat interface but no matching subSM
+    clatIface = "tunv4-rmnet0";
+    networksharetracker.HandleClatInterfaceRemoved(clatIface);
+    // Verify that sharedSubSM_ is still empty
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 0);
+
+    // Test with valid clat interface and matching subSM with different upstream
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    auto subSM = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    subSM->upstreamIfaceName_ = "rmnet1";  // Different upstream
+    networksharetracker.sharedSubSM_.push_back(subSM);
+    networksharetracker.subStateMachineMap_["wlan0"] = nullptr;
+    clatIface = "tunv4-rmnet0";
+    networksharetracker.HandleClatInterfaceRemoved(clatIface);
+    // Verify that sharedSubSM_ still has 1 element (not processed due to upstream mismatch)
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+
+    // Test with valid clat interface and matching subSM with same upstream but not SHARED state
+    networksharetracker.sharedSubSM_.clear();
+    auto subSM2 = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    subSM2->upstreamIfaceName_ = "rmnet0";  // Matching upstream
+    networksharetracker.sharedSubSM_.push_back(subSM2);
+    auto netShareState = std::make_shared<NetworkShareTracker::NetSharingSubSmState>(subSM2, false);
+    netShareState->lastState_ = SUB_SM_STATE_AVAILABLE;
+    networksharetracker.subStateMachineMap_["wlan0"] = netShareState;
+    clatIface = "tunv4-rmnet0";
+    networksharetracker.HandleClatInterfaceRemoved(clatIface);
+    // Verify that sharedSubSM_ still has 1 element (not processed due to not SHARED state)
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+
+    // Test with valid clat interface and matching subSM with SHARED state
+    netShareState->lastState_ = SUB_SM_STATE_SHARED;
+    networksharetracker.HandleClatInterfaceRemoved(clatIface);
+    // Verify that sharedSubSM_ still has 1 element (processed but subSM not removed)
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceAdded_EmptyCellularIface
+ * @tc.name: Test HandleClatInterfaceAdded with empty cellular interface
+ * @tc.desc: Verify that HandleClatInterfaceAdded returns when cellular interface is empty
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceAdded_EmptyCellularIface, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    // Test with clat interface that has no dash separator
+    std::string clatIface = "tunv4";
+    networksharetracker.HandleClatInterfaceAdded(clatIface);
+    // Verify that sharedSubSM_ is empty when cellular interface is empty
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 0);
+    // Verify that GetV6IfaceFromClat returns empty string
+    std::string v6Iface = networksharetracker.GetV6IfaceFromClat(clatIface);
+    EXPECT_EQ(v6Iface, "");
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceRemoved_EmptyCellularIface
+ * @tc.name: Test HandleClatInterfaceRemoved with empty cellular interface
+ * @tc.desc: Verify that HandleClatInterfaceRemoved returns when cellular interface is empty
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceRemoved_EmptyCellularIface, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    // Test with clat interface that has no dash separator
+    std::string clatIface = "tunv4";
+    networksharetracker.HandleClatInterfaceRemoved(clatIface);
+    // Verify that sharedSubSM_ is empty when cellular interface is empty
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 0);
+    // Verify that GetV6IfaceFromClat returns empty string
+    std::string v6Iface = networksharetracker.GetV6IfaceFromClat(clatIface);
+    EXPECT_EQ(v6Iface, "");
+}
+
+/**
+ * @tc.number: NetworkShareTracker_IsClatInterface_Empty
+ * @tc.name: Test IsClatInterface with empty string
+ * @tc.desc: Verify that IsClatInterface returns false for empty string
+ */
+HWTEST_F(NetworkShareTrackerTest, IsClatInterface_Empty, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    std::string emptyIface = "";
+    EXPECT_FALSE(networksharetracker.IsClatInterface(emptyIface));
+}
+
+/**
+ * @tc.number: NetworkShareTracker_IsClatInterface_PrefixMatch
+ * @tc.name: Test IsClatInterface with prefix match
+ * @tc.desc: Verify that IsClatInterface returns true when interface starts with tunv4-
+ */
+HWTEST_F(NetworkShareTrackerTest, IsClatInterface_PrefixMatch, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    std::string clatIface = "tunv4-";
+    EXPECT_TRUE(networksharetracker.IsClatInterface(clatIface));
+
+    clatIface = "tunv4-abc";
+    EXPECT_TRUE(networksharetracker.IsClatInterface(clatIface));
+}
+
+/**
+ * @tc.number: NetworkShareTracker_GetV6IfaceFromClat_Valid
+ * @tc.name: Test GetV6IfaceFromClat with valid clat interface
+ * @tc.desc: Verify that GetV6IfaceFromClat correctly extracts v6 interface
+ */
+HWTEST_F(NetworkShareTrackerTest, GetV6IfaceFromClat_Valid, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    std::string clatIface = "tunv4-";
+    std::string v6Iface = networksharetracker.GetV6IfaceFromClat(clatIface);
+    EXPECT_EQ(v6Iface, "");
+
+    clatIface = "tunv4-";
+    v6Iface = networksharetracker.GetV6IfaceFromClat(clatIface);
+    EXPECT_EQ(v6Iface, "");
+}
+
+/**
+ * @tc.number: NetworkShareTracker_GetInterfaceIndexByName_Valid
+ * @tc.name: Test GetInterfaceIndexByName with valid interface
+ * @tc.desc: Verify that GetInterfaceIndexByName returns correct index for valid interface
+ */
+HWTEST_F(NetworkShareTrackerTest, GetInterfaceIndexByName_Valid, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    // Test with loopback interface which should exist on most systems
+    uint32_t index = networksharetracker.GetInterfaceIndexByName("lo");
+    // lo interface should exist and have index 1
+    EXPECT_EQ(index, 1);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceAdded_NullSubSM
+ * @tc.name: Test HandleClatInterfaceAdded with null subSM in sharedSubSM_
+ * @tc.desc: Verify that HandleClatInterfaceAdded handles null subSM gracefully
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceAdded_NullSubSM, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.sharedSubSM_.push_back(nullptr);
+    std::string clatIface = "tunv4-rmnet0";
+    // Should not crash and should handle null subSM
+    networksharetracker.HandleClatInterfaceAdded(clatIface);
+    // Verify that sharedSubSM_ still has 1 element (null pointer)
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceRemoved_NullSubSM
+ * @tc.name: Test HandleClatInterfaceRemoved with null subSM in sharedSubSM_
+ * @tc.desc: Verify that HandleClatInterfaceRemoved handles null subSM gracefully
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceRemoved_NullSubSM, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    networksharetracker.sharedSubSM_.push_back(nullptr);
+    std::string clatIface = "tunv4-rmnet0";
+    networksharetracker.HandleClatInterfaceRemoved(clatIface);
+    // Should not crash and should handle null subSM
+    // Verify that sharedSubSM_ still has 1 element (null pointer)
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceRemoved_NullState
+ * @tc.name: Test HandleClatInterfaceRemoved with null state in subStateMachineMap_
+ * @tc.desc: Verify that HandleClatInterfaceRemoved handles null state gracefully
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceRemoved_NullState, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    auto subSM = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    networksharetracker.sharedSubSM_.push_back(subSM);
+    networksharetracker.subStateMachineMap_["wlan0"] = nullptr;
+    std::string clatIface = "tunv4-rmnet0";
+    networksharetracker.HandleClatInterfaceRemoved(clatIface);
+    // Should not crash and should handle null state
+    // Verify that sharedSubSM_ is unchanged
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceAdded_MatchingUpstream
+ * @tc.name: Test HandleClatInterfaceAdded with matching upstream interface
+ * @tc.desc: Verify that HandleClatInterfaceAdded processes when upstream matches
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceAdded_MatchingUpstream, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    auto subSM = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    networksharetracker.sharedSubSM_.push_back(subSM);
+
+    // Set the upstream interface to match the clat derived interface
+    // This requires the subSM to have rmnet0 as upstream
+    std::string clatIface = "tunv4-rmnet0";
+    networksharetracker.HandleClatInterfaceAdded(clatIface);
+    // Verify that sharedSubSM_ still has 1 element
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceAdded_FullFlow
+ * @tc.name: Test HandleClatInterfaceAdded full flow with matching upstream
+ * @tc.desc: calls DisableNat, IpfwdRemoveInterfaceForward, IpfwdAddInterfaceForward, and EnableNat
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceAdded_FullFlow, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    auto subSM = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+
+    // Set upstream interface name to match the clat derived interface (rmnet0)
+    // Using reflection to set private member
+    subSM->upstreamIfaceName_ = "rmnet0";
+    networksharetracker.sharedSubSM_.push_back(subSM);
+
+    // Create a virtual clat interface for testing
+    const std::string clatIface = "tunv4-rmnet0";
+    system("ip link add dummy0 type dummy");
+    system(("ip link set dummy0 name " + clatIface).c_str());
+    system(("ip link set " + clatIface + " up").c_str());
+
+    // Call HandleClatInterfaceAdded - this should trigger the full flow:
+    // 1. DisableNat(downIface, clatIface)
+    // 2. IpfwdRemoveInterfaceForward(downIface, clatIface)
+    // 3. IpfwdAddInterfaceForward(downIface, clatIface)
+    // 4. EnableNat(downIface, clatIface)
+    networksharetracker.HandleClatInterfaceAdded(clatIface);
+
+    // Verify that sharedSubSM_ still has 1 element
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+
+    // Clean up the virtual interface
+    system(("ip link del " + clatIface).c_str());
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceAdded_MultipleSubSM
+ * @tc.name: Test HandleClatInterfaceAdded with multiple subSMs
+ * @tc.desc: Verify that HandleClatInterfaceAdded processes only matching subSM
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceAdded_MultipleSubSM, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+
+    // Create first subSM with matching upstream
+    auto subSM1 = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    subSM1->upstreamIfaceName_ = "rmnet0";
+    networksharetracker.sharedSubSM_.push_back(subSM1);
+
+    // Create second subSM with different upstream
+    auto subSM2 = std::make_shared<NetworkShareSubStateMachine>(
+        "usb0", SharingIfaceType::SHARING_USB, configuration);
+    subSM2->upstreamIfaceName_ = "rmnet1";
+    networksharetracker.sharedSubSM_.push_back(subSM2);
+
+    // Verify that there are 2 subSMs before the call
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 2);
+
+    // Create a virtual clat interface
+    const std::string clatIface = "tunv4-rmnet0";
+    system("ip link add dummy0 type dummy");
+    system(("ip link set dummy0 name " + clatIface).c_str());
+    system(("ip link set " + clatIface + " up").c_str());
+
+    // Call HandleClatInterfaceAdded - only subSM1 should be processed
+    networksharetracker.HandleClatInterfaceAdded(clatIface);
+
+    // Verify that sharedSubSM_ still has 2 elements (both subSMs remain)
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 2);
+
+    // Clean up the virtual interface
+    system(("ip link del " + clatIface).c_str());
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceAdded_IpfwdAddInterfaceForwardFail
+ * @tc.name: Test HandleClatInterfaceAdded when IpfwdAddInterfaceForward fails
+ * @tc.desc: Verify that HandleClatInterfaceAdded handles IpfwdAddInterfaceForward failure
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceAdded_IpfwdAddInterfaceForwardFail, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    auto subSM = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    subSM->upstreamIfaceName_ = "rmnet0";
+    networksharetracker.sharedSubSM_.push_back(subSM);
+
+    // Create a virtual clat interface
+    const std::string clatIface = "tunv4-rmnet0";
+    system("ip link add dummy0 type dummy");
+    system(("ip link set dummy0 name " + clatIface).c_str());
+    system(("ip link set " + clatIface + " up").c_str());
+
+    // Call HandleClatInterfaceAdded - this will call IpfwdAddInterfaceForward
+    // Even if it fails, the function should continue and not crash
+    networksharetracker.HandleClatInterfaceAdded(clatIface);
+
+    // Verify that sharedSubSM_ still has 1 element
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+
+    // Clean up the virtual interface
+    system(("ip link del " + clatIface).c_str());
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceAdded_EnableNatFail
+ * @tc.name: Test HandleClatInterfaceAdded when EnableNat fails
+ * @tc.desc: Verify that HandleClatInterfaceAdded handles EnableNat failure
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceAdded_EnableNatFail, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    auto subSM = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    subSM->upstreamIfaceName_ = "rmnet0";
+    networksharetracker.sharedSubSM_.push_back(subSM);
+
+    // Create a virtual clat interface
+    const std::string clatIface = "tunv4-rmnet0";
+    system("ip link add dummy0 type dummy");
+    system(("ip link set dummy0 name " + clatIface).c_str());
+    system(("ip link set " + clatIface + " up").c_str());
+
+    // Call HandleClatInterfaceAdded - this will call EnableNat
+    // Even if it fails, the function should complete without crashing
+    networksharetracker.HandleClatInterfaceAdded(clatIface);
+
+    // Verify that sharedSubSM_ still has 1 element
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+
+    // Clean up the virtual interface
+    system(("ip link del " + clatIface).c_str());
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceRemoved_DisableNatFail
+ * @tc.name: Test HandleClatInterfaceRemoved when DisableNat fails
+ * @tc.desc: Verify that HandleClatInterfaceRemoved handles DisableNat failure
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceRemoved_DisableNatFail, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    auto subSM = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    subSM->upstreamIfaceName_ = "rmnet0";
+    networksharetracker.sharedSubSM_.push_back(subSM);
+
+    // Set up subStateMachineMap_ with SHARED state
+    auto netShareState = std::make_shared<NetworkShareTracker::NetSharingSubSmState>(subSM, false);
+    netShareState->lastState_ = SUB_SM_STATE_SHARED;
+    networksharetracker.subStateMachineMap_["wlan0"] = netShareState;
+
+    // Create a virtual clat interface
+    const std::string clatIface = "tunv4-rmnet0";
+    system("ip link add dummy0 type dummy");
+    system(("ip link set dummy0 name " + clatIface).c_str());
+    system(("ip link set " + clatIface + " up").c_str());
+
+    // Call HandleClatInterfaceRemoved - this will call DisableNat
+    // Even if it fails, the function should continue and not crash
+    // Verify that subSM is still in sharedSubSM_ after the call
+    size_t beforeSize = networksharetracker.sharedSubSM_.size();
+    networksharetracker.HandleClatInterfaceRemoved(clatIface);
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), beforeSize);
+
+    // Verify that the state is still SHARED (not modified by the function)
+    auto iter = networksharetracker.subStateMachineMap_.find("wlan0");
+    ASSERT_NE(iter, networksharetracker.subStateMachineMap_.end());
+    EXPECT_EQ(iter->second->lastState_, SUB_SM_STATE_SHARED);
+
+    // Clean up the virtual interface
+    system(("ip link del " + clatIface).c_str());
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceRemoved_IpfwdRemoveInterfaceForwardFail
+ * @tc.name: Test HandleClatInterfaceRemoved when IpfwdRemoveInterfaceForward fails
+ * @tc.desc: Verify that HandleClatInterfaceRemoved handles IpfwdRemoveInterfaceForward failure
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceRemoved_IpfwdRemoveInterfaceForwardFail, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    auto subSM = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    subSM->upstreamIfaceName_ = "rmnet0";
+    networksharetracker.sharedSubSM_.push_back(subSM);
+
+    // Set up subStateMachineMap_ with SHARED state
+    auto netShareState = std::make_shared<NetworkShareTracker::NetSharingSubSmState>(subSM, false);
+    netShareState->lastState_ = SUB_SM_STATE_SHARED;
+    networksharetracker.subStateMachineMap_["wlan0"] = netShareState;
+
+    // Create a virtual clat interface
+    const std::string clatIface = "tunv4-rmnet0";
+    system("ip link add dummy0 type dummy");
+    system(("ip link set dummy0 name " + clatIface).c_str());
+    system(("ip link set " + clatIface + " up").c_str());
+
+    // Call HandleClatInterfaceRemoved - this will call IpfwdRemoveInterfaceForward
+    // Even if it fails, the function should complete without crashing
+    // Verify that subSM is still in sharedSubSM_ after the call
+    size_t beforeSize = networksharetracker.sharedSubSM_.size();
+    networksharetracker.HandleClatInterfaceRemoved(clatIface);
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), beforeSize);
+
+    // Verify that the state is still SHARED (not modified by the function)
+    auto iter = networksharetracker.subStateMachineMap_.find("wlan0");
+    ASSERT_NE(iter, networksharetracker.subStateMachineMap_.end());
+    EXPECT_EQ(iter->second->lastState_, SUB_SM_STATE_SHARED);
+
+    // Clean up the virtual interface
+    system(("ip link del " + clatIface).c_str());
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceRemoved_SubSMNotInMap
+ * @tc.name: Test HandleClatInterfaceRemoved when subSM is not in subStateMachineMap_
+ * @tc.desc: Verify that HandleClatInterfaceRemoved handles subSM not found in map
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceRemoved_SubSMNotInMap, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    auto subSM = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    subSM->upstreamIfaceName_ = "rmnet0";
+    networksharetracker.sharedSubSM_.push_back(subSM);
+
+    // Do NOT add to subStateMachineMap_ to test the "not found" path
+    // subStateMachineMap_ is empty
+    EXPECT_EQ(networksharetracker.subStateMachineMap_.size(), 0);
+
+    const std::string clatIface = "tunv4-rmnet0";
+    // Should log warning and continue, function should not crash
+    networksharetracker.HandleClatInterfaceRemoved(clatIface);
+
+    // Verify that sharedSubSM_ is unchanged
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+}
+
+/**
+ * @tc.number: NetworkShareTracker_HandleClatInterfaceRemoved_SubSMStateNull
+ * @tc.name: Test HandleClatInterfaceRemoved when subSM state is nullptr
+ * @tc.desc: Verify that HandleClatInterfaceRemoved handles nullptr state
+ */
+HWTEST_F(NetworkShareTrackerTest, HandleClatInterfaceRemoved_SubSMStateNull, TestSize.Level1)
+{
+    NetworkShareTracker networksharetracker;
+    auto configuration = std::make_shared<NetworkShareConfiguration>();
+    auto subSM = std::make_shared<NetworkShareSubStateMachine>(
+        "wlan0", SharingIfaceType::SHARING_WIFI, configuration);
+    subSM->upstreamIfaceName_ = "rmnet0";
+    networksharetracker.sharedSubSM_.push_back(subSM);
+
+    // Add to map with nullptr state
+    networksharetracker.subStateMachineMap_["wlan0"] = nullptr;
+
+    // Verify the state is nullptr
+    auto iter = networksharetracker.subStateMachineMap_.find("wlan0");
+    ASSERT_NE(iter, networksharetracker.subStateMachineMap_.end());
+    EXPECT_EQ(iter->second, nullptr);
+
+    const std::string clatIface = "tunv4-rmnet0";
+    // Should log info and continue, function should not crash
+    networksharetracker.HandleClatInterfaceRemoved(clatIface);
+
+    // Verify that sharedSubSM_ is unchanged
+    EXPECT_EQ(networksharetracker.sharedSubSM_.size(), 1);
+}
+} // namespace NetManagerStandard
+} // namespace OHOS

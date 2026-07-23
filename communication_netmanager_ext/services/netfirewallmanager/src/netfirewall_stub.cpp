@@ -1,0 +1,509 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
+#include "errors.h"
+#include "ipc_object_stub.h"
+#include "ipc_types.h"
+#include "message_parcel.h"
+#include "netfirewall_hisysevent.h"
+#include "netmanager_base_common_utils.h"
+#include "netmanager_base_permission.h"
+#include "netmgr_ext_log_wrapper.h"
+#include "netfirewall_stub.h"
+#include "i_net_intercept_record_callback.h"
+
+namespace OHOS {
+namespace NetManagerStandard {
+namespace {
+static constexpr const char *PERMISSION_MANAGE_NET_FIREWALL = "ohos.permission.MANAGE_NET_FIREWALL";
+static constexpr const char *PERMISSION_GET_NET_FIREWALL = "ohos.permission.GET_NET_FIREWALL";
+static constexpr const char *PERMISSION_TRAFFIC_FILTER = "ohos.permission.kernel.TRAFFIC_FILTER";
+}
+NetFirewallStub::NetFirewallStub()
+{
+    memberFuncMap_[static_cast<uint32_t>(SET_NET_FIREWALL_STATUS)] = {PERMISSION_MANAGE_NET_FIREWALL,
+                                                                      &NetFirewallStub::OnSetNetFirewallPolicy};
+    memberFuncMap_[static_cast<uint32_t>(GET_NET_FIREWALL_STATUS)] = {PERMISSION_GET_NET_FIREWALL,
+                                                                      &NetFirewallStub::OnGetNetFirewallPolicy};
+    memberFuncMap_[static_cast<uint32_t>(ADD_NET_FIREWALL_RULE)] = {PERMISSION_MANAGE_NET_FIREWALL,
+                                                                    &NetFirewallStub::OnAddNetFirewallRule};
+    memberFuncMap_[static_cast<uint32_t>(UPDATE_NET_FIREWALL_RULE)] = {PERMISSION_MANAGE_NET_FIREWALL,
+                                                                       &NetFirewallStub::OnUpdateNetFirewallRule};
+    memberFuncMap_[static_cast<uint32_t>(DELETE_NET_FIREWALL_RULE)] = {PERMISSION_MANAGE_NET_FIREWALL,
+                                                                       &NetFirewallStub::OnDeleteNetFirewallRule};
+    memberFuncMap_[static_cast<uint32_t>(GET_ALL_NET_FIREWALL_RULES)] = {PERMISSION_GET_NET_FIREWALL,
+                                                                        &NetFirewallStub::OnGetNetFirewallRules};
+    memberFuncMap_[static_cast<uint32_t>(GET_NET_FIREWALL_RULE)] = {PERMISSION_GET_NET_FIREWALL,
+                                                                    &NetFirewallStub::OnGetNetFirewallRule};
+    memberFuncMap_[static_cast<uint32_t>(GET_ALL_INTERCEPT_RECORDS)] = {PERMISSION_GET_NET_FIREWALL,
+                                                                       &NetFirewallStub::OnGetInterceptRecords};
+    memberFuncMap_[static_cast<uint32_t>(REGISTER_INTERCEPT_RECORDS_CALLBACK)] = {
+        PERMISSION_GET_NET_FIREWALL, &NetFirewallStub::OnRegisterInterceptRecordsCallback};
+    memberFuncMap_[static_cast<uint32_t>(UNREGISTER_INTERCEPT_RECORDS_CALLBACK)] = {
+        PERMISSION_GET_NET_FIREWALL, &NetFirewallStub::OnUnregisterInterceptRecordsCallback};
+    memberFuncMap_[static_cast<uint32_t>(CREATE_REDIRECTOR)] = {PERMISSION_TRAFFIC_FILTER,
+        &NetFirewallStub::OnCreateRedirector};
+    memberFuncMap_[static_cast<uint32_t>(DESTROY_REDIRECTOR)] = {PERMISSION_TRAFFIC_FILTER,
+        &NetFirewallStub::OnDestroyRedirector};
+    memberFuncMap_[static_cast<uint32_t>(ADD_REDIRECT_RULE)] = {PERMISSION_TRAFFIC_FILTER,
+        &NetFirewallStub::OnAddRedirectRule};
+    memberFuncMap_[static_cast<uint32_t>(CLEAR_REDIRECT_RULE)] = {PERMISSION_TRAFFIC_FILTER,
+        &NetFirewallStub::OnClearRedirectRule};
+    memberFuncMap_[static_cast<uint32_t>(GLOBAL_ENABLE_TRAFFIC_FILTER)] = {PERMISSION_TRAFFIC_FILTER,
+        &NetFirewallStub::OnGlobalEnableTrafficFilter};
+    memberFuncMap_[static_cast<uint32_t>(GLOBAL_DISABLE_TRAFFIC_FILTER)] = {PERMISSION_TRAFFIC_FILTER,
+        &NetFirewallStub::OnGlobalDisableTrafficFilter};
+    memberFuncMap_[static_cast<uint32_t>(GET_TRAFFIC_FILTER_GLOBAL_STATUS)] = {PERMISSION_TRAFFIC_FILTER,
+        &NetFirewallStub::OnGetTrafficFilterGlobalStatus};
+    memberFuncMap_[static_cast<uint32_t>(QUERY_PROCESS)] = {PERMISSION_TRAFFIC_FILTER,
+        &NetFirewallStub::OnQueryProcess};
+}
+
+int32_t NetFirewallStub::CheckFirewallPermission(std::string &strPermission)
+{
+    if (!strPermission.empty() && !NetManagerPermission::CheckPermission(strPermission)) {
+        NETMGR_EXT_LOG_E("Permission denied permission: %{public}s", strPermission.c_str());
+        return FIREWALL_ERR_PERMISSION_DENIED;
+    }
+    return FIREWALL_SUCCESS;
+}
+
+int32_t NetFirewallStub::OnRemoteRequest(uint32_t code, MessageParcel &data, MessageParcel &reply,
+    MessageOption &option)
+{
+    std::u16string myDescripter = NetFirewallStub::GetDescriptor();
+    std::u16string remoteDescripter = data.ReadInterfaceToken();
+    if (myDescripter != remoteDescripter) {
+        NETMGR_EXT_LOG_E("descriptor checked fail");
+        return NETMANAGER_EXT_ERR_DESCRIPTOR_MISMATCH;
+    }
+    auto itFunc = memberFuncMap_.find(code);
+    if (itFunc != memberFuncMap_.end()) {
+        NETMGR_EXT_LOG_I("enter OnRemoteRequest code %{public}d:", code);
+        int32_t checkResult = CheckFirewallPermission(itFunc->second.strPermission);
+        if (checkResult != FIREWALL_SUCCESS) {
+            return checkResult;
+        }
+        auto serviceFunc = itFunc->second.serviceFunc;
+        if (serviceFunc != nullptr) {
+            return (this->*serviceFunc)(data, reply);
+        }
+    }
+    return IPCObjectStub::OnRemoteRequest(code, data, reply, option);
+}
+
+int32_t NetFirewallStub::OnSetNetFirewallPolicy(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t userId;
+    if (!data.ReadInt32(userId)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    if (userId <= 0) {
+        NETMGR_EXT_LOG_E("Parameter error.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    sptr<NetFirewallPolicy> status = NetFirewallPolicy::Unmarshalling(data);
+    if (status == nullptr) {
+        NETMGR_EXT_LOG_E("status is nullptr.");
+        return FIREWALL_ERR_INTERNAL;
+    }
+
+    return SetNetFirewallPolicy(userId, status);
+}
+
+int32_t NetFirewallStub::OnGetNetFirewallPolicy(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t userId;
+    if (!data.ReadInt32(userId)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    if (userId <= 0) {
+        NETMGR_EXT_LOG_E("Parameter error.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    sptr<NetFirewallPolicy> status = sptr<NetFirewallPolicy>::MakeSptr();
+    int32_t ret = GetNetFirewallPolicy(userId, status);
+    if (ret == FIREWALL_SUCCESS) {
+        if (!status->Marshalling(reply)) {
+            return NETMANAGER_EXT_ERR_WRITE_REPLY_FAIL;
+        }
+    }
+    return ret;
+}
+
+int32_t NetFirewallStub::OnAddNetFirewallRule(MessageParcel &data, MessageParcel &reply)
+{
+    sptr<NetFirewallRule> rule = NetFirewallRule::Unmarshalling(data);
+    if (rule == nullptr) {
+        NETMGR_EXT_LOG_E("rule is nullptr.");
+        return FIREWALL_ERR_INTERNAL;
+    }
+    if (rule->userId <= 0) {
+        NETMGR_EXT_LOG_E("Parameter error.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    if (rule->ruleName.empty() || rule->ruleName.size() > MAX_RULE_NAME_LEN ||
+        rule->ruleDescription.size() > MAX_RULE_DESCRIPTION_LEN) {
+        NETMANAGER_EXT_LOGE("rule name or description is too long");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    if (rule->localIps.size() > MAX_RULE_IP_COUNT || rule->remoteIps.size() > MAX_RULE_IP_COUNT) {
+        NETMGR_EXT_LOG_E("ip invalid, size is too long.");
+        return FIREWALL_ERR_EXCEED_MAX_IP;
+    }
+
+    if (rule->localPorts.size() > MAX_RULE_PORT_COUNT || rule->remotePorts.size() > MAX_RULE_PORT_COUNT) {
+        NETMGR_EXT_LOG_E("port invalid, size is too long.");
+        return FIREWALL_ERR_EXCEED_MAX_PORT;
+    }
+
+    if (rule->domains.size() > MAX_RULE_DOMAIN_COUNT) {
+        NETMGR_EXT_LOG_E("domain invalid, size is too long.");
+        return FIREWALL_ERR_EXCEED_MAX_DOMAIN;
+    }
+
+    int32_t result = 0;
+    int32_t ret = AddNetFirewallRule(rule, result);
+    if (ret == FIREWALL_SUCCESS) {
+        if (!reply.WriteUint32(result)) {
+            ret = NETMANAGER_EXT_ERR_WRITE_REPLY_FAIL;
+        }
+    }
+    NetFirewallHisysEvent::SendFirewallConfigReport(rule->userId, ret);
+    return ret;
+}
+
+int32_t NetFirewallStub::OnUpdateNetFirewallRule(MessageParcel &data, MessageParcel &reply)
+{
+    sptr<NetFirewallRule> rule = NetFirewallRule::Unmarshalling(data);
+    if (rule == nullptr) {
+        NETMGR_EXT_LOG_E("rule is nullptr.");
+        return FIREWALL_ERR_INTERNAL;
+    }
+    if (rule->userId <= 0) {
+        NETMGR_EXT_LOG_E("Parameter error.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    if (rule->ruleName.empty() || rule->ruleName.size() > MAX_RULE_NAME_LEN ||
+        rule->ruleDescription.size() > MAX_RULE_DESCRIPTION_LEN) {
+        NETMANAGER_EXT_LOGE("rule name or description is too long");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    if (rule->localIps.size() > MAX_RULE_IP_COUNT || rule->remoteIps.size() > MAX_RULE_IP_COUNT) {
+        NETMGR_EXT_LOG_E("ip invalid, size is too long.");
+        return FIREWALL_ERR_EXCEED_MAX_IP;
+    }
+
+    if (rule->localPorts.size() > MAX_RULE_PORT_COUNT || rule->remotePorts.size() > MAX_RULE_PORT_COUNT) {
+        NETMGR_EXT_LOG_E("port invalid, size is too long.");
+        return FIREWALL_ERR_EXCEED_MAX_PORT;
+    }
+
+    if (rule->domains.size() > MAX_RULE_DOMAIN_COUNT) {
+        NETMGR_EXT_LOG_E("domain invalid, size is too long.");
+        return FIREWALL_ERR_EXCEED_MAX_DOMAIN;
+    }
+
+    int32_t ret = UpdateNetFirewallRule(rule);
+    NetFirewallHisysEvent::SendFirewallConfigReport(rule->userId, ret);
+    return ret;
+}
+
+int32_t NetFirewallStub::OnDeleteNetFirewallRule(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t userId;
+    if (!data.ReadInt32(userId)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    if (userId <= 0) {
+        NETMGR_EXT_LOG_E("Parameter error.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    int32_t ruleId;
+    if (!data.ReadInt32(ruleId)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    if (ruleId <= 0) {
+        NETMGR_EXT_LOG_E("Parameter error.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    int32_t ret = DeleteNetFirewallRule(userId, ruleId);
+    NetFirewallHisysEvent::SendFirewallRequestReport(userId, ret);
+    return ret;
+}
+
+int32_t NetFirewallStub::OnGetNetFirewallRules(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t userId;
+    if (!data.ReadInt32(userId)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    if (userId <= 0) {
+        NETMGR_EXT_LOG_E("Parameter error.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    sptr<RequestParam> param = RequestParam::Unmarshalling(data);
+    if (param == nullptr) {
+        NETMGR_EXT_LOG_E("param is nullptr.");
+        return FIREWALL_ERR_INTERNAL;
+    }
+    if (param->page < 1 || param->page > FIREWALL_USER_MAX_RULE || param->pageSize < 1 ||
+        param->pageSize > static_cast<int32_t>(MAX_PAGE_SIZE)) {
+        NETMANAGER_EXT_LOGE("ParsePageParam page or pageSize is error");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    sptr<FirewallRulePage> info = sptr<FirewallRulePage>::MakeSptr();
+    int32_t ret = GetNetFirewallRules(userId, param, info);
+    if (ret == FIREWALL_SUCCESS) {
+        if (!info->Marshalling(reply)) {
+            return NETMANAGER_EXT_ERR_WRITE_REPLY_FAIL;
+        }
+    }
+    NetFirewallHisysEvent::SendFirewallRequestReport(userId, ret);
+    return ret;
+}
+
+int32_t NetFirewallStub::OnGetNetFirewallRule(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t userId;
+    if (!data.ReadInt32(userId)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    int32_t ruleId;
+    if (!data.ReadInt32(ruleId)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    if (userId <= 0 || ruleId <= 0) {
+        NETMGR_EXT_LOG_E("Parameter error.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    sptr<NetFirewallRule> rule = sptr<NetFirewallRule>::MakeSptr();
+    int32_t ret = GetNetFirewallRule(userId, ruleId, rule);
+    if (ret == FIREWALL_SUCCESS) {
+        if (!rule->Marshalling(reply)) {
+            return NETMANAGER_EXT_ERR_WRITE_REPLY_FAIL;
+        }
+    }
+    NetFirewallHisysEvent::SendFirewallRequestReport(userId, ret);
+    return ret;
+}
+
+int32_t NetFirewallStub::OnGetInterceptRecords(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t userId;
+    if (!data.ReadInt32(userId)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    if (userId <= 0) {
+        NETMGR_EXT_LOG_E("Parameter error.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    sptr<RequestParam> param = RequestParam::Unmarshalling(data);
+    if (param == nullptr) {
+        NETMGR_EXT_LOG_E("param is nullptr.");
+        return FIREWALL_ERR_INTERNAL;
+    }
+    if (param->page < 1 || param->page > FIREWALL_USER_MAX_RULE || param->pageSize < 1 ||
+        param->pageSize > static_cast<int32_t>(MAX_PAGE_SIZE)) {
+        NETMANAGER_EXT_LOGE("ParsePageParam page or pageSize is error");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    sptr<InterceptRecordPage> info = sptr<InterceptRecordPage>::MakeSptr();
+    int32_t ret = GetInterceptRecords(userId, param, info);
+    if (ret == FIREWALL_SUCCESS) {
+        if (!info->Marshalling(reply)) {
+            return NETMANAGER_EXT_ERR_WRITE_REPLY_FAIL;
+        }
+    }
+    NetFirewallHisysEvent::SendRecordRequestReport(userId, ret);
+    return ret;
+}
+
+int32_t NetFirewallStub::OnRegisterInterceptRecordsCallback(MessageParcel &data, MessageParcel &reply)
+{
+    sptr<IRemoteObject> remote = data.ReadRemoteObject();
+    if (remote == nullptr) {
+        NETMGR_EXT_LOG_E("Callback ptr is nullptr.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+
+    sptr<INetInterceptRecordCallback> callback = iface_cast<INetInterceptRecordCallback>(remote);
+    if (callback == nullptr) {
+        NETMGR_EXT_LOG_E("Callback ptr is nullptr.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    int32_t ret = RegisterInterceptRecordsCallback(callback);
+    reply.WriteInt32(ret);
+    return ret;
+}
+
+int32_t NetFirewallStub::OnUnregisterInterceptRecordsCallback(MessageParcel &data, MessageParcel &reply)
+{
+    sptr<IRemoteObject> remote = data.ReadRemoteObject();
+    if (remote == nullptr) {
+        NETMGR_EXT_LOG_E("Callback ptr is nullptr.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+
+    sptr<INetInterceptRecordCallback> callback = iface_cast<INetInterceptRecordCallback>(remote);
+    if (callback == nullptr) {
+        NETMGR_EXT_LOG_E("Callback ptr is nullptr.");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+    int32_t ret = UnregisterInterceptRecordsCallback(callback);
+    reply.WriteInt32(ret);
+    return ret;
+}
+
+int32_t NetFirewallStub::OnCreateRedirector(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t groupId;
+    if (!data.ReadUint32(groupId)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+
+    uint32_t priority;
+    if (!data.ReadUint32(priority)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+
+    std::string redirectorId;
+    int32_t ret = CreateRedirector(groupId, priority, redirectorId);
+    if (ret == FIREWALL_SUCCESS) {
+        if (!reply.WriteString(redirectorId)) {
+            return NETMANAGER_EXT_ERR_WRITE_REPLY_FAIL;
+        }
+    }
+    return ret;
+}
+
+int32_t NetFirewallStub::OnDestroyRedirector(MessageParcel &data, MessageParcel &reply)
+{
+    std::string redirectorId;
+    if (!data.ReadString(redirectorId)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    if (redirectorId.empty()) {
+        NETMGR_EXT_LOG_E("RedirectorId is empty");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+
+    int32_t ret = DestroyRedirector(redirectorId);
+    return ret;
+}
+
+int32_t NetFirewallStub::OnAddRedirectRule(MessageParcel &data, MessageParcel &reply)
+{
+    std::string redirectorId;
+    if (!data.ReadString(redirectorId)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    if (redirectorId.empty()) {
+        NETMGR_EXT_LOG_E("RedirectorId is empty");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+
+    sptr<TrafficFilterRedirectRule> rule = TrafficFilterRedirectRule::Unmarshalling(data);
+    if (rule == nullptr) {
+        NETMGR_EXT_LOG_E("Rule unmarshalling failed");
+        return FIREWALL_ERR_INTERNAL;
+    }
+
+    int32_t ret = AddRedirectRule(redirectorId, rule);
+    return ret;
+}
+
+int32_t NetFirewallStub::OnClearRedirectRule(MessageParcel &data, MessageParcel &reply)
+{
+    std::string redirectorId;
+    if (!data.ReadString(redirectorId)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    if (redirectorId.empty()) {
+        NETMGR_EXT_LOG_E("RedirectorId is empty");
+        return FIREWALL_ERR_INVALID_PARAMETER;
+    }
+
+    int32_t ret = ClearRedirectRule(redirectorId);
+    return ret;
+}
+
+int32_t NetFirewallStub::OnGlobalEnableTrafficFilter(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t ret = GlobalEnableTrafficFilter();
+    return ret;
+}
+
+int32_t NetFirewallStub::OnGlobalDisableTrafficFilter(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t ret = GlobalDisableTrafficFilter();
+    return ret;
+}
+
+int32_t NetFirewallStub::OnQueryProcess(MessageParcel &data, MessageParcel &reply)
+{
+    std::string srcIp;
+    if (!data.ReadString(srcIp)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    uint16_t srcPort;
+    if (!data.ReadUint16(srcPort)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    std::string dstIp;
+    if (!data.ReadString(dstIp)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    uint16_t dstPort;
+    if (!data.ReadUint16(dstPort)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    uint8_t protocol;
+    if (!data.ReadUint8(protocol)) {
+        return NETMANAGER_EXT_ERR_READ_DATA_FAIL;
+    }
+    uint32_t uid = 0;
+    uint32_t pid = 0;
+    int32_t ret = QueryProcess(srcIp, srcPort, dstIp, dstPort, protocol, uid, pid);
+    if (ret == TRAFFICFILTER_OK) {
+        if (!reply.WriteUint32(uid)) {
+            NETMGR_EXT_LOG_E("WriteUint32 uid failed");
+            return NETMANAGER_EXT_ERR_WRITE_REPLY_FAIL;
+        }
+        if (!reply.WriteUint32(pid)) {
+            NETMGR_EXT_LOG_E("WriteUint32 pid failed");
+            return NETMANAGER_EXT_ERR_WRITE_REPLY_FAIL;
+        }
+    }
+    return ret;
+}
+
+int32_t NetFirewallStub::OnGetTrafficFilterGlobalStatus(MessageParcel &data, MessageParcel &reply)
+{
+    bool isEnabled = false;
+    int32_t ret = GetTrafficFilterGlobalStatus(isEnabled);
+    if (ret == FIREWALL_SUCCESS) {
+        if (!reply.WriteBool(isEnabled)) {
+            NETMGR_EXT_LOG_E("WriteBool failed");
+            return NETMANAGER_EXT_ERR_WRITE_REPLY_FAIL;
+        }
+    }
+    return ret;
+}
+} // namespace NetManagerStandard
+} // namespace OHOS

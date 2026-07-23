@@ -1,0 +1,168 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_ext/netmanager_ext_config.gni")
+
+config("net_vpn_extension_if_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "include",
+    "include/ipc",
+    "$EXT_INNERKITS_ROOT/include",
+  ]
+
+  defines = []
+  if (is_double_framework) {
+    defines += [ "CONFIG_DUAL_FRAMEWORK" ]
+  }
+  if (target_cpu == "arm") {
+    defines += [ "BINDER_IPC_32BIT" ]
+  }
+  if (is_standard_system) {
+    defines += [ "CONFIG_STANDARD_SYSTEM" ]
+  }
+  if (defined(build_public_version) && build_public_version) {
+    defines += [ "BUILD_PUBLIC_VERSION" ]
+  }
+}
+
+ohos_shared_library("vpn_extension") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$VPN_EXTENSION_SOURCE_DIR/src/js_vpn_extension.cpp",
+    "$VPN_EXTENSION_SOURCE_DIR/src/js_vpn_extension_context.cpp",
+    "$VPN_EXTENSION_SOURCE_DIR/src/vpn_extension.cpp",
+    "$VPN_EXTENSION_SOURCE_DIR/src/vpn_extension_context.cpp",
+  ]
+  configs = [ ":net_vpn_extension_if_config" ]
+  public_configs = [ ":net_vpn_extension_if_config" ]
+
+  include_dirs = [
+    "$EXT_INNERKITS_ROOT/include",
+  ]
+
+  deps = [
+    "$NETMANAGER_EXT_ROOT/interfaces/innerkits/netvpnclient:net_vpn_manager_if",
+  ]
+
+  external_deps = [
+    "ability_base:configuration",
+    "ability_base:want",
+    "ability_runtime:ability_connect_callback_stub",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "ability_runtime:abilitykit_native",
+    "ability_runtime:abilitykit_utils",
+    "ability_runtime:app_context",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:extensionkit_native",
+    "ability_runtime:napi_common",
+    "ability_runtime:runtime",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libtokenid_sdk",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "eventhandler:libeventhandler",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "ipc:ipc_napi",
+    "ipc:ipc_single",
+    "libuv:uv",
+    "napi:ace_napi",
+    "netmanager_base:fwmark_client",
+    "netmanager_base:napi_utils",
+    "netmanager_base:net_conn_manager_if",
+    "netmanager_base:net_manager_common",
+    "netmanager_base:net_native_manager_if",
+    "node:node_header_notice",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "window_manager:libdm",
+    "window_manager:libwm",
+  ]
+
+  public_external_deps = [
+    "netmanager_base:net_manager_common",
+    "netmanager_base:net_native_manager_if",
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetworkVpn\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  if (enable_netmgr_ext_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  part_name = "netmanager_ext"
+  subsystem_name = "communication"
+}
+
+ohos_shared_library("vpn_extension_module") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  include_dirs =
+      [ "$VPN_EXTENSION_SOURCE_DIR/interfaces/innerkits/vpnextension" ]
+
+  sources = [ "$VPN_EXTENSION_SOURCE_DIR/src/vpn_extension_module_loader.cpp" ]
+
+  configs = [ ":net_vpn_extension_if_config" ]
+  public_configs = [ ":net_vpn_extension_if_config" ]
+
+  deps = [ ":vpn_extension" ]
+
+  external_deps = [
+    "ability_base:configuration",
+    "ability_base:session_info",
+    "ability_runtime:abilitykit_native",
+    "ability_runtime:runtime",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "libuv:uv",
+    "napi:ace_napi",
+    "netmanager_base:net_manager_common",
+    "netmanager_base:net_native_manager_if",
+    "node:node_header_notice",
+    "window_manager:libdm",
+    "ipc:ipc_napi",
+  ]
+
+  public_external_deps = [
+    "netmanager_base:net_manager_common",
+    "netmanager_base:net_native_manager_if",
+  ]
+
+  relative_install_dir = "extensionability/"
+  part_name = "netmanager_ext"
+  subsystem_name = "communication"
+}

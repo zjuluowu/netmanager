@@ -1,0 +1,129 @@
+# Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# args of this module
+SUBSYSTEM_DIR = "//foundation/communication"
+NETMANAGER_EXT_ROOT = "$SUBSYSTEM_DIR/netmanager_ext"
+
+# args of frameworks
+FRAMEWORKS_SRC = "$NETMANAGER_EXT_ROOT/frameworks/native/externalvpnclient/src"
+ETHERNETMANAGER_INNERKITS_SOURCE_DIR =
+    "$NETMANAGER_EXT_ROOT/frameworks/native/ethernetclient"
+NETWORKSHAREMANAGER_INNERKITS_SOURCE_DIR =
+    "$NETMANAGER_EXT_ROOT/frameworks/native/netshareclient"
+VPN_INNERKITS_SOURCE_DIR = "$NETMANAGER_EXT_ROOT/frameworks/native/netvpnclient"
+VPN_EXTENSION_SOURCE_DIR = "$NETMANAGER_EXT_ROOT/frameworks/native/vpnextension"
+NETFIREWALL_EXTENSION_SOURCE_DIR =
+    "$NETMANAGER_EXT_ROOT/frameworks/native/netfirewallclient"
+WEARABLE_DISTRIBUTED_NET_INNERKITS_SOURCE_DIR =
+    "$NETMANAGER_EXT_ROOT/frameworks/native/wearabledistributednetclient"
+NETWORKSLICE_INNERKITS_SOURCE_DIR =
+    "$NETMANAGER_EXT_ROOT/frameworks/native/networksliceclient"
+
+# args of interfaces
+INTERFACES_INCLUDE =
+    "$NETMANAGER_EXT_ROOT/interfaces/innerkits/externalvpnclient/include"
+INTERFACES_DIR = "$NETMANAGER_EXT_ROOT/interfaces/innerkits/externalvpnclient"
+EXT_INNERKITS_ROOT = "$NETMANAGER_EXT_ROOT/interfaces/innerkits"
+MDNSINTERFACE_INCLUDE = "$NETMANAGER_EXT_ROOT/interfaces/innerkits/mdnsclient"
+
+# args of services
+SERVICES_EXTERNALVPNMANAGER = "$NETMANAGER_EXT_ROOT/services/externalvpnmanager"
+ETHERNETMANAGER_SOURCE_DIR = "$NETMANAGER_EXT_ROOT/services/ethernetmanager"
+NETWORKSHAREMANAGER_SOURCE_DIR =
+    "$NETMANAGER_EXT_ROOT/services/networksharemanager"
+MDNSMANAGER_SOURCE_DIR = "$NETMANAGER_EXT_ROOT/services/mdnsmanager"
+VPNMANAGER_SOURCE_DIR = "$NETMANAGER_EXT_ROOT/services/vpnmanager"
+NETFIREWALLMANAGER_SOURCE_DIR =
+    "$NETMANAGER_EXT_ROOT/services/netfirewallmanager"
+WEARABLE_DISTRIBUTED_NET_MANAGER_SOURCE_DIR =
+    "$NETMANAGER_EXT_ROOT/services/wearabledistributednetmanager"
+NETWORKSLICE_SOURCE_DIR = "$NETMANAGER_EXT_ROOT/services/networkslicemanager"
+
+# args of uitls
+NETWORKSHAREMANAGER_UTILS_DIR = "$NETMANAGER_EXT_ROOT/utils"
+
+use_js_debug = false
+declare_args() {
+  communication_bluetooth_switch_enable = false
+  communication_wifi_switch_enable = false
+  enable_netmgr_ext_debug = true
+  netmanager_ext_feature_coverage = false
+  netmanager_ext_feature_ethernet = true
+  netmanager_ext_feature_share = true
+  netmanager_ext_feature_mdns = true
+  netmanager_ext_feature_net_firewall = false
+  netmanager_ext_feature_sysvpn = false
+  netmanager_ext_feature_vpn = true
+  netmanager_ext_feature_vpn_for_user0 = false
+  netmanager_ext_feature_vpnext = true
+  usb_manager_enable = false
+  netmanager_ext_feature_wearable_distributed_net = false
+  battery_manager_switch_enable = false
+  netmanager_ext_share_notification_enable = false
+  netmanager_ext_share_traffic_limit_enable = false
+  netmanager_ext_extensible_authentication = false
+  netmanager_ext_feature_networkslice = false
+  netmanager_ext_feature_iface_supplier_id = false
+  netmanager_ext_fpga_mode_enable = false
+  netmanager_ext_feature_read_ccm_json = false
+}
+
+sysvpn_flags = [ "-DSUPPORT_SYSVPN" ]
+
+common_cflags = [
+  "-D_FORTIFY_SOURCE=2",
+  "-fdata-sections",
+  "-ffunction-sections",
+  "-Os",
+  "-O2",
+]
+
+memory_optimization_cflags = [
+  "-fvisibility=hidden",
+]
+
+memory_optimization_cflags_cc = [
+  "-fvisibility=hidden",
+  "-fvisibility-inlines-hidden",
+]
+
+memory_optimization_ldflags = [
+  "-Wl,--exclude-libs=ALL",
+  "-Wl,--gc-sections",
+]
+
+if (defined(global_parts_info) &&
+    defined(global_parts_info.communication_wifi) &&
+    global_parts_info.communication_wifi) {
+  communication_wifi_switch_enable = true
+}
+
+if (defined(global_parts_info) &&
+    defined(global_parts_info.communication_bluetooth) &&
+    global_parts_info.communication_bluetooth) {
+  communication_bluetooth_switch_enable = true
+}
+
+if (defined(global_parts_info) && defined(global_parts_info.usb_usb_manager) &&
+    global_parts_info.usb_usb_manager) {
+  usb_manager_enable = true
+}
+
+if (defined(global_parts_info) &&
+    defined(global_parts_info.powermgr_battery_manager) &&
+    global_parts_info.powermgr_battery_manager) {
+  battery_manager_switch_enable = true
+}
+
+fuzz_test_path = "netmanager_ext/netmanager_ext"
