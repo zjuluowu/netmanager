@@ -1,0 +1,307 @@
+/*
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <netinet/tcp.h>
+#include <netinet/in.h>
+#include "netstack_chr_client.h"
+#include "netstack_common_utils.h"
+#include "netstack_log.h"
+#include "i_netstack_chr_client.h"
+#include "securec.h"
+
+namespace OHOS::NetStack::ChrClient {
+
+static constexpr const long HTTP_REQUEST_SUCCESS_MIN = 200;
+static constexpr const long HTTP_REQUEST_SUCCESS_MAX = 299;
+static constexpr const int HTTP_FILE_TRANSFER_SIZE_THRESHOLD = 100000;
+static constexpr const int HTTP_FILE_TRANSFER_TIME_THRESHOLD = 500000;
+static constexpr const int HIGH_LATENCY_TRANSFER_TIME_THRESHOLD = 1000000;
+static constexpr const int MAX_LETTER_CODE = 128;
+
+NetStackChrClient &NetStackChrClient::GetInstance()
+{
+    static NetStackChrClient instance;
+    return instance;
+}
+
+int NetStackChrClient::GetAddrFromSock(int sockfd, struct DataTransTcpInfo &httpTcpInfo)
+{
+    sockaddr_storage localss{};
+    sockaddr_storage peerss{};
+    socklen_t addrLen = 0;
+
+    // Get local addr
+    addrLen = sizeof(localss);
+    (void)getsockname(sockfd, reinterpret_cast<sockaddr *>(&localss), &addrLen);
+
+    // Get peer addr
+    addrLen = sizeof(peerss);
+   (void)getpeername(sockfd, reinterpret_cast<sockaddr *>(&peerss), &addrLen);
+
+    char buf[INET6_ADDRSTRLEN] = {0};
+    httpTcpInfo.ipType = localss.ss_family;
+    if (localss.ss_family == AF_INET && peerss.ss_family == AF_INET) {
+        auto *l4 = reinterpret_cast<sockaddr_in *>(&localss);
+        auto *p4 = reinterpret_cast<sockaddr_in *>(&peerss);
+        if (inet_ntop(AF_INET, &l4->sin_addr, buf, sizeof(buf)) != nullptr) {
+            httpTcpInfo.srcIp = buf;
+            httpTcpInfo.srcPort = ntohs(l4->sin_port);
+        }
+        if (inet_ntop(AF_INET, &p4->sin_addr, buf, sizeof(buf)) != nullptr) {
+            httpTcpInfo.dstIp = buf;
+            httpTcpInfo.dstPort = ntohs(p4->sin_port);
+        }
+    } else if (localss.ss_family == AF_INET6 && peerss.ss_family == AF_INET6) {
+        auto *l6 = reinterpret_cast<sockaddr_in6 *>(&localss);
+        auto *p6 = reinterpret_cast<sockaddr_in6 *>(&peerss);
+        if (inet_ntop(AF_INET6, &l6->sin6_addr, buf, sizeof(buf)) != nullptr) {
+            httpTcpInfo.srcIp = buf;
+            httpTcpInfo.srcPort = ntohs(l6->sin6_port);
+        }
+        if (inet_ntop(AF_INET6, &p6->sin6_addr, buf, sizeof(buf)) != nullptr) {
+            httpTcpInfo.dstIp = buf;
+            httpTcpInfo.dstPort = ntohs(p6->sin6_port);
+        }
+    } else {
+        return -1;
+    }
+    
+    return 0;
+}
+
+int NetStackChrClient::GetTcpInfoFromSock(const curl_socket_t sockfd, DataTransTcpInfo &httpTcpInfo)
+{
+    if (sockfd <= 0) {
+        return -1;
+    }
+    struct tcp_info tcpInfo = {};
+    socklen_t infoLen = sizeof(tcpInfo);
+
+    if (getsockopt(sockfd, IPPROTO_TCP, TCP_INFO, &tcpInfo, &infoLen) < 0) {
+        return -1;
+    }
+
+    httpTcpInfo.unacked = tcpInfo.tcpi_unacked;
+    httpTcpInfo.lastDataSent = tcpInfo.tcpi_last_data_sent;
+    httpTcpInfo.lastAckSent = tcpInfo.tcpi_last_ack_sent;
+    httpTcpInfo.lastDataRecv = tcpInfo.tcpi_last_data_recv;
+    httpTcpInfo.lastAckRecv = tcpInfo.tcpi_last_ack_recv;
+    httpTcpInfo.rtt = tcpInfo.tcpi_rtt;
+    httpTcpInfo.rttvar = tcpInfo.tcpi_rttvar;
+    httpTcpInfo.totalRetrans = tcpInfo.tcpi_total_retrans;
+    httpTcpInfo.retransmits = tcpInfo.tcpi_retransmits;
+    
+    if (GetAddrFromSock(sockfd, httpTcpInfo) == 0) {
+        httpTcpInfo.srcIp = CommonUtils::AnonymizeIp(httpTcpInfo.srcIp);
+        httpTcpInfo.dstIp = CommonUtils::AnonymizeIp(httpTcpInfo.dstIp);
+    }
+
+    return 0;
+}
+
+template <typename DataType>
+DataType NetStackChrClient::GetNumericAttributeFromCurl(CURL *handle, CURLINFO info)
+{
+    DataType number = 0;
+    CURLcode res = curl_easy_getinfo(handle, info, &number);
+    if (res != CURLE_OK) {
+        return -1;
+    }
+    return number;
+}
+
+std::string NetStackChrClient::GetStringAttributeFromCurl(CURL *handle, CURLINFO info)
+{
+    char *result = nullptr;
+    CURLcode res = curl_easy_getinfo(handle, info, &result);
+    if (res != CURLE_OK || result == nullptr) {
+        return std::string();
+    }
+    return std::string(result);
+}
+
+long NetStackChrClient::GetRequestStartTime(curl_off_t totalTime)
+{
+    auto now = std::chrono::system_clock::now();
+    long msCount = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    return msCount;
+}
+
+void NetStackChrClient::GetHttpInfoFromCurl(CURL *handle, DataTransHttpInfo &httpInfo)
+{
+    (void)curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpInfo.responseCode);
+    httpInfo.nameLookUpTime = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_NAMELOOKUP_TIME_T);
+    httpInfo.connectTime = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_CONNECT_TIME_T);
+    httpInfo.preTransferTime = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_PRETRANSFER_TIME_T);
+    httpInfo.startTransferTime = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_STARTTRANSFER_TIME_T);
+    httpInfo.totalTime = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_TOTAL_TIME_T);
+    httpInfo.redirectTime = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_REDIRECT_TIME_T);
+    httpInfo.appconnectTime = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_APPCONNECT_TIME_T);
+    httpInfo.queueTime = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_QUEUE_TIME_T);
+    httpInfo.retryAfter = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_RETRY_AFTER);
+    httpInfo.requestStartTime = GetRequestStartTime(httpInfo.totalTime);
+
+    httpInfo.sizeUpload = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_SIZE_UPLOAD_T);
+    httpInfo.sizeDownload = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_SIZE_DOWNLOAD_T);
+    httpInfo.speedDownload = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_SPEED_DOWNLOAD_T);
+    httpInfo.speedUpload = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_SPEED_UPLOAD_T);
+
+    httpInfo.redirectCount = GetNumericAttributeFromCurl<long>(handle, CURLINFO_REDIRECT_COUNT);
+    httpInfo.osError = GetNumericAttributeFromCurl<long>(handle, CURLINFO_OS_ERRNO);
+    httpInfo.sslVerifyResult = GetNumericAttributeFromCurl<long>(handle, CURLINFO_PROXY_SSL_VERIFYRESULT);
+    httpInfo.proxyError = GetNumericAttributeFromCurl<long>(handle, CURLINFO_PROXY_ERROR);
+
+    httpInfo.effectiveMethod = GetStringAttributeFromCurl(handle, CURLINFO_EFFECTIVE_METHOD);
+    httpInfo.contentType = GetStringAttributeFromCurl(handle, CURLINFO_CONTENT_TYPE);
+    std::string originUrl = GetStringAttributeFromCurl(handle, CURLINFO_EFFECTIVE_URL);
+    httpInfo.hostName = CommonUtils::AnonymizeHost(originUrl);
+}
+
+std::string NetStackChrClient::EncodeUrlParam(const std::string &str)
+{
+    char encoded[4] = {0};
+    std::string encodeOut;
+    
+    size_t length = str.length();
+    
+    for (size_t i = 0; i < length; ++i) {
+        auto c = static_cast<uint8_t>(str[i]);
+        if (c >= MAX_LETTER_CODE || c == '\n' || c == '\r') {
+            sprintf_s(encoded, sizeof(encoded), "%%%02X", c);
+            encodeOut += encoded;
+        } else {
+            encodeOut += static_cast<char>(c);
+        }
+    }
+    return encodeOut;
+}
+
+void NetStackChrClient::GetUrlInfoFromCurl(CURL *handle, DataTransUrlInfo &urlInfo)
+{
+    (void)curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &urlInfo.responseCode);
+    urlInfo.totalTime = GetNumericAttributeFromCurl<curl_off_t>(handle, CURLINFO_TOTAL_TIME_T);
+    urlInfo.requestStartTime = GetRequestStartTime(urlInfo.totalTime);
+    std::string originUrl = GetStringAttributeFromCurl(handle, CURLINFO_EFFECTIVE_URL);
+    std::string EncodeUrl = EncodeUrlParam(originUrl);
+    std::string SimpleUrl = CommonUtils::GetSimpleHost(EncodeUrl);
+    urlInfo.hostName = CommonUtils::AnonymizeHost(SimpleUrl);
+}
+
+int NetStackChrClient::ShouldReportHttpAbnormalEvent(const DataTransChrStats &dataTransChrStats)
+{
+    const auto &httpInfo = dataTransChrStats.httpInfo;
+    if (httpInfo.responseCode < HTTP_REQUEST_SUCCESS_MIN || httpInfo.responseCode > HTTP_REQUEST_SUCCESS_MAX ||
+        httpInfo.curlCode != 0 || httpInfo.osError != 0 || httpInfo.proxyError != 0) {
+        return 0;
+    }
+    if ((httpInfo.sizeUpload + httpInfo.sizeDownload <= HTTP_FILE_TRANSFER_SIZE_THRESHOLD) &&
+        httpInfo.totalTime > HTTP_FILE_TRANSFER_TIME_THRESHOLD) {
+        return 0;
+    }
+#ifdef HTTP_DEADFLOWRESET_FEATURE
+    if (dataTransChrStats.httpDeadFlowInfo.sock != 0) {
+        return 0;
+    }
+#endif
+    return -1;
+}
+
+bool NetStackChrClient::ShouldReportUrlAbnormalEvent(const DataTransUrlInfo &urlInfo)
+{
+    if (urlInfo.responseCode < HTTP_REQUEST_SUCCESS_MIN || urlInfo.responseCode > HTTP_REQUEST_SUCCESS_MAX ||
+        urlInfo.curlCode != 0 || urlInfo.osError != 0) {
+        return true;
+    }
+    if (urlInfo.totalTime > HIGH_LATENCY_TRANSFER_TIME_THRESHOLD) {
+        return true;
+    }
+    return false;
+}
+
+#ifdef HTTP_DEADFLOWRESET_FEATURE
+void NetStackChrClient::GetDfxInfoFromCurlHandleAndReport(CURL *handle, int32_t curlCode,
+    const HttpDeadFlowInfo *deadFlowInfo)
+#else
+void NetStackChrClient::GetDfxInfoFromCurlHandleAndReport(CURL *handle, int32_t curlCode)
+#endif
+{
+    if (handle == NULL) {
+        return;
+    }
+
+    DataTransChrStats dataTransChrStats{};
+    dataTransChrStats.httpInfo.uid = static_cast<int>(getuid());
+    dataTransChrStats.httpInfo.curlCode = curlCode;
+    if (CommonUtils::GetBundleName().has_value()) {
+        dataTransChrStats.processName = CommonUtils::GetBundleName().value();
+    }
+
+#ifdef HTTP_DEADFLOWRESET_FEATURE
+    if (deadFlowInfo != nullptr) {
+        dataTransChrStats.httpDeadFlowInfo = *deadFlowInfo;
+    }
+#endif
+
+    GetHttpInfoFromCurl(handle, dataTransChrStats.httpInfo);
+
+    curl_off_t sockfd = 0;
+    curl_easy_getinfo(handle, CURLINFO_ACTIVESOCKET, &sockfd);
+
+    GetTcpInfoFromSock(sockfd, dataTransChrStats.tcpInfo);
+
+    netstackChrReport_.LogHttpInfo(dataTransChrStats);
+    if (ShouldReportHttpAbnormalEvent(dataTransChrStats) != 0) {
+        return;
+    }
+    netstackChrReport_.ReportCommonEvent(dataTransChrStats);
+}
+
+void NetStackChrClient::GetDfxUrlInfoFromCurlHandleAndReport(CURL *handle, int32_t curlCode)
+{
+    if (handle == NULL) {
+        return;
+    }
+ 
+    DataTransChrStats dataTransChrStats{};
+    dataTransChrStats.urlInfo.uid = static_cast<int>(getuid());
+    dataTransChrStats.urlInfo.curlCode = curlCode;
+    if (CommonUtils::GetBundleName().has_value()) {
+        dataTransChrStats.processName = CommonUtils::GetBundleName().value();
+    }
+    GetUrlInfoFromCurl(handle, dataTransChrStats.urlInfo);
+    curl_off_t sockfd = 0;
+    curl_easy_getinfo(handle, CURLINFO_ACTIVESOCKET, &sockfd);
+    GetTcpInfoFromSock(sockfd, dataTransChrStats.tcpInfo);
+    std::lock_guard<std::mutex> lock(urlRequestListMutex);
+    // LCOV_EXCL_START
+    if (!urlRequestList[dataTransChrStats.urlInfo.hostName]) {
+        urlRequestList[dataTransChrStats.urlInfo.hostName] = 0;
+    }
+    // LCOV_EXCL_STOP
+    urlRequestList[dataTransChrStats.urlInfo.hostName]++;
+    if (!ShouldReportUrlAbnormalEvent(dataTransChrStats.urlInfo)) {
+        return;
+    }
+    char *ip = nullptr;
+    curl_easy_getinfo(handle, CURLINFO_PRIMARY_IP, &ip);
+    std::string dstIp = (ip == nullptr ? "" : ip);
+    dataTransChrStats.urlInfo.dstIp = CommonUtils::AnonymizeIp(dstIp);
+    dataTransChrStats.urlInfo.totalCnt = urlRequestList[dataTransChrStats.urlInfo.hostName];
+    netstackChrReport_.ReportUrlCommonEvent(dataTransChrStats);
+    urlRequestList.erase(dataTransChrStats.urlInfo.hostName);
+}
+
+}  // namespace OHOS::NetStack::ChrClient

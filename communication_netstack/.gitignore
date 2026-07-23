@@ -1,0 +1,11 @@
+.idea
+cmake-build-debug
+*.patch
+@ohos.net.connection.d.ts
+basic.d.ts
+.vscode
+CMakeLists.txt
+*.diff
+.clang-format
+target
+Cargo.lock

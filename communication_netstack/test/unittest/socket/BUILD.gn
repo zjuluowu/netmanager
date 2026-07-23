@@ -1,0 +1,173 @@
+# Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//build/test.gni")
+import("//foundation/communication/netstack/netstack_config.gni")
+
+SOCKET_NAPI = "$NETSTACK_DIR/frameworks/js/napi/socket"
+TLS_NAPI = "$NETSTACK_DIR/frameworks/js/napi/tls"
+
+utils_include = [
+  "$SUBSYSTEM_DIR/netstack/utils/common_utils/include",
+  "$SUBSYSTEM_DIR/netstack/utils/log/include",
+  "$SUBSYSTEM_DIR/netstack/utils/napi_utils/include",
+]
+
+common_external_deps = [
+  "curl:curl_shared",
+  "hilog:libhilog",
+  "napi:ace_napi",
+]
+
+ohos_unittest("socket_unittest") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  module_out_path = "netstack/netstack/socket_unittest"
+
+  include_dirs = [
+    "$NETSTACK_DIR/frameworks/js/napi/proxy/include",
+    "$NETSTACK_DIR/utils/napi_utils/include",
+    "$NETSTACK_INNERKITS_DIR/tls_socket/include",
+    "$NETSTACK_NATIVE_ROOT/tls_socket/include",
+    "$SOCKET_NAPI/async_context/include",
+    "$SOCKET_NAPI/async_work/include",
+    "$SOCKET_NAPI/constant/include",
+    "$SOCKET_NAPI/options/include",
+    "$SOCKET_NAPI/socket_exec/include",
+    "$SOCKET_NAPI/socket_module/include",
+    "$TLS_NAPI/include",
+    "$TLS_NAPI/include/context",
+  ]
+  include_dirs += utils_include
+
+  sources = [
+    "$NETSTACK_DIR/frameworks/js/napi/proxy/src/socks5_instance.cpp",
+    "$NETSTACK_DIR/frameworks/js/napi/proxy/src/socks5_none_method.cpp",
+    "$NETSTACK_DIR/frameworks/js/napi/proxy/src/socks5_package.cpp",
+    "$NETSTACK_DIR/frameworks/js/napi/proxy/src/socks5_passwd_method.cpp",
+    "$NETSTACK_DIR/frameworks/js/napi/proxy/src/socks5_utils.cpp",
+    "$NETSTACK_NATIVE_ROOT/tls_socket/src/secure_data.cpp",
+    "$NETSTACK_NATIVE_ROOT/tls_socket/src/socket_error.cpp",
+    "$NETSTACK_NATIVE_ROOT/tls_socket/src/tls_certificate.cpp",
+    "$NETSTACK_NATIVE_ROOT/tls_socket/src/tls_configuration.cpp",
+    "$NETSTACK_NATIVE_ROOT/tls_socket/src/tls_context.cpp",
+    "$NETSTACK_NATIVE_ROOT/tls_socket/src/tls_context_server.cpp",
+    "$NETSTACK_NATIVE_ROOT/tls_socket/src/tls_key.cpp",
+    "$SOCKET_NAPI/async_context/src/bind_context.cpp",
+    "$SOCKET_NAPI/async_context/src/common_context.cpp",
+    "$SOCKET_NAPI/async_context/src/connect_context.cpp",
+    "$SOCKET_NAPI/async_context/src/local_socket_context.cpp",
+    "$SOCKET_NAPI/async_context/src/local_socket_server_context.cpp",
+    "$SOCKET_NAPI/async_context/src/multicast_get_loopback_context.cpp",
+    "$SOCKET_NAPI/async_context/src/multicast_get_ttl_context.cpp",
+    "$SOCKET_NAPI/async_context/src/multicast_membership_context.cpp",
+    "$SOCKET_NAPI/async_context/src/multicast_set_loopback_context.cpp",
+    "$SOCKET_NAPI/async_context/src/multicast_set_reuse_address_context.cpp",
+    "$SOCKET_NAPI/async_context/src/multicast_set_ttl_context.cpp",
+    "$SOCKET_NAPI/async_context/src/tcp_extra_context.cpp",
+    "$SOCKET_NAPI/async_context/src/tcp_send_context.cpp",
+    "$SOCKET_NAPI/async_context/src/tcp_server_common_context.cpp",
+    "$SOCKET_NAPI/async_context/src/tcp_server_extra_context.cpp",
+    "$SOCKET_NAPI/async_context/src/tcp_server_listen_context.cpp",
+    "$SOCKET_NAPI/async_context/src/tcp_server_send_context.cpp",
+    "$SOCKET_NAPI/async_context/src/udp_extra_context.cpp",
+    "$SOCKET_NAPI/async_context/src/udp_send_context.cpp",
+    "$SOCKET_NAPI/async_work/src/socket_async_work.cpp",
+    "$SOCKET_NAPI/options/src/extra_options_base.cpp",
+    "$SOCKET_NAPI/options/src/local_socket_options.cpp",
+    "$SOCKET_NAPI/options/src/net_address.cpp",
+    "$SOCKET_NAPI/options/src/proxy_options.cpp",
+    "$SOCKET_NAPI/options/src/socket_remote_info.cpp",
+    "$SOCKET_NAPI/options/src/socket_state_base.cpp",
+    "$SOCKET_NAPI/options/src/tcp_connect_options.cpp",
+    "$SOCKET_NAPI/options/src/tcp_extra_options.cpp",
+    "$SOCKET_NAPI/options/src/tcp_send_options.cpp",
+    "$SOCKET_NAPI/options/src/udp_extra_options.cpp",
+    "$SOCKET_NAPI/options/src/udp_send_options.cpp",
+    "$SOCKET_NAPI/socket_exec/src/connect_monitor.cpp",
+    "$SOCKET_NAPI/socket_exec/src/local_socket_exec.cpp",
+    "$SOCKET_NAPI/socket_exec/src/socket_exec.cpp",
+    "$SOCKET_NAPI/socket_exec/src/socket_extra_exec.cpp",
+    "$SOCKET_NAPI/socket_module/src/socket_module.cpp",
+    "$TLS_NAPI/src/context/tls_bind_context.cpp",
+    "$TLS_NAPI/src/context/tls_connect_context.cpp",
+    "$TLS_NAPI/src/context/tls_extra_context.cpp",
+    "$TLS_NAPI/src/context/tls_init_context.cpp",
+    "$TLS_NAPI/src/context/tls_napi_context.cpp",
+    "$TLS_NAPI/src/context/tls_send_context.cpp",
+    "$TLS_NAPI/src/context/tls_server_close_context.cpp",
+    "$TLS_NAPI/src/context/tls_server_napi_context.cpp",
+    "$TLS_NAPI/src/context/tls_server_send_context.cpp",
+    "$TLS_NAPI/src/monitor.cpp",
+    "$TLS_NAPI/src/monitor_server.cpp",
+    "$TLS_NAPI/src/tls_socket.cpp",
+    "$TLS_NAPI/src/tls_socket_server.cpp",
+    "$TLS_NAPI/src/tlssocket_async_work.cpp",
+    "$TLS_NAPI/src/tlssocket_exec.cpp",
+    "$TLS_NAPI/src/tlssocket_module.cpp",
+    "$TLS_NAPI/src/tlssocketserver_async_work.cpp",
+    "$TLS_NAPI/src/tlssocketserver_exec.cpp",
+    "$TLS_NAPI/src/tlssocketserver_module.cpp",
+    "SocketTest.cpp",
+  ]
+
+  deps = [
+    "$NETSTACK_DIR/frameworks/js/napi/socket:socket",
+    "$NETSTACK_DIR/utils/napi_utils:napi_utils",
+  ]
+
+  cflags_cc = [ "--coverage" ]
+
+  ldflags = [ "--coverage" ]
+
+  external_deps = common_external_deps
+  external_deps += [
+    "hiappevent:hiappevent_innerapi",
+    "openssl:libcrypto_shared",
+    "openssl:libssl_shared",
+    "samgr:samgr_proxy",
+  ]
+
+  defines = [
+    "private = public",
+    "protected = public",
+    "DT_TEST",
+  ]
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.communication_netmanager_base) &&
+      global_parts_info.communication_netmanager_base) {
+    external_deps += [
+      "netmanager_base:net_conn_manager_if",
+      "netmanager_base:net_security_config_if",
+    ]
+    defines += [ "HAS_NETMANAGER_BASE=1" ]
+  } else {
+    defines += [ "HAS_NETMANAGER_BASE=0" ]
+  }
+
+  part_name = "netstack"
+  subsystem_name = "communication"
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":socket_unittest" ]
+}
