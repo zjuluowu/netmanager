@@ -11,7 +11,7 @@
 仓库包含三个 OpenHarmony 部件：
 
 | 部件 | 主要职责 | ROM 预算（`bundle.json`） | RAM 预算（`bundle.json`） |
-| --- | --- | --- | --- |
+| :--- | :--- | ---: | ---: |
 | `netmanager_base` | 网络连接、策略、统计、Netsys 原生服务 | 4.5 MB | 10 MB |
 | `netmanager_ext` | 以太网、网络共享、mDNS、VPN、防火墙、网络切片、穿戴分布式网络 | 2 MB | 500 KB |
 | `netstack` | HTTP、WebSocket、Socket、TLS 等应用侧协议能力 | 3 MB | 5 MB |
@@ -88,7 +88,7 @@
 - 产品未使用的 JS、ETS、CJ 等语言绑定；
 - 调试、覆盖率、诊断和 FPGA 功能。
 
-`netmanager_ext_config.gni` 当前默认启用 Ethernet、Sharing、mDNS、VPN 和 VPN Extension，不适合直接作为手表产品基线，手表画像应改为扩展能力按需启用。
+`netmanager_ext_config.gni` 当前默认启用 Ethernet、Sharing、mDNS、VPN 和 VPN Extension，因此不适合直接作为手表产品基线。手表画像应改为扩展能力按需启用。
 
 ## 5. 裁剪方法
 
@@ -114,7 +114,7 @@
 6. 保持数据面在内核或 eBPF 路径，避免逐包 IPC；
 7. 使用 PSS、峰值 RSS、堆峰值、线程栈和 mmap 实测值核算，而不是仅依赖部件声明。
 
-对于能力固定的手表，静态裁剪通常优于“全部编译、运行时关闭”；后者可能减少启动开销，但不能消除镜像占用。
+对于产品设计阶段已经确定功能集合、无需在运行时切换能力的手表，静态裁剪通常优于“全部编译、运行时关闭”；后者可能减少启动开销，但不能消除镜像占用。
 
 ## 6. 推荐架构模型
 
@@ -157,7 +157,7 @@ Product Profile
 1. **网络核心域**：NetConn、最小 Policy、Netsys 和 DNS；
 2. **链路适配域**：Wi-Fi、Cellular 或 Companion Link，按产品选择。
 
-HTTP/TLS 尽量作为按需库进入调用进程，统计、诊断和扩展服务按需拉起或完全移除。手机产品仍可保留多 SA 隔离，而手表通过部署画像折叠服务，避免维护独立分支。
+HTTP/TLS 尽量作为按需库进入调用进程，统计、诊断和扩展服务按需拉起或完全移除。手机产品仍可保留多 SA 隔离；手表则由部署画像把多个逻辑 SA 合并到同一物理进程域，即“折叠服务”，从而减少进程和 IPC 开销并避免维护独立分支。
 
 ## 8. Telephony 协同裁剪
 
