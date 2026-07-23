@@ -88,7 +88,7 @@
 - 产品未使用的 JS、ETS、CJ 等语言绑定；
 - 调试、覆盖率、诊断和 FPGA 功能。
 
-`netmanager_ext_config.gni` 当前默认启用 Ethernet、Sharing、mDNS、VPN 和 VPN Extension，因此不适合直接作为手表产品基线。手表产品配置应默认关闭扩展能力，仅按需启用。
+截至本次分析，`communication_netmanager_ext/netmanager_ext_config.gni` 默认启用 Ethernet、Sharing、mDNS、VPN 和 VPN Extension，因此不适合直接作为手表产品基线。产品落地时应重新核对开关默认值；手表产品配置应默认关闭扩展能力，仅按需启用。
 
 ## 5. 裁剪方法
 
@@ -118,7 +118,7 @@
 
 ## 6. 推荐架构模型
 
-建议采用**能力原生架构（Capability-Native Architecture，CNA）**和**产品画像驱动架构（Product Profile Driven Architecture，PPDA）**。
+建议采用**能力原生架构（Capability-Native Architecture）**和**产品画像驱动架构（Product Profile Driven Architecture）**。
 
 将产品裁剪形式化为：
 
