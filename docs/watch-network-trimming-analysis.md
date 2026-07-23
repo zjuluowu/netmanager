@@ -10,11 +10,11 @@
 
 仓库包含三个 OpenHarmony 部件：
 
-| 部件 | 主要职责 | 声明的 ROM/RAM 预算 |
-| --- | --- | --- |
-| `netmanager_base` | 网络连接、策略、统计、Netsys 原生服务 | 4.5 MB / 10 MB |
-| `netmanager_ext` | 以太网、网络共享、mDNS、VPN、防火墙、网络切片、穿戴分布式网络 | 2 MB / 500 KB |
-| `netstack` | HTTP、WebSocket、Socket、TLS 等应用侧协议能力 | 3 MB / 5 MB |
+| 部件 | 主要职责 | 声明的 ROM 预算 | 声明的 RAM 预算 |
+| --- | --- | --- | --- |
+| `netmanager_base` | 网络连接、策略、统计、Netsys 原生服务 | 4.5 MB | 10 MB |
+| `netmanager_ext` | 以太网、网络共享、mDNS、VPN、防火墙、网络切片、穿戴分布式网络 | 2 MB | 500 KB |
+| `netstack` | HTTP、WebSocket、Socket、TLS 等应用侧协议能力 | 3 MB | 5 MB |
 
 这些预算来自各部件 `bundle.json`，是声明值而非实测值，当前不能证明产品的实际峰值内存满足预算。
 
@@ -134,6 +134,8 @@ Product Profile
 → Runtime Deployment
 → Binary/Memory Layout
 ```
+
+箭头表示能力求解过程中的逐层推导：每一层以上一层的约束为输入，生成下一层的最小合法闭包。
 
 每项能力的统一描述至少应包含：
 
