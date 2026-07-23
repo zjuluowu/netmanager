@@ -20,6 +20,8 @@
 | `netmanager_ext` | 扩展能力：以太网、共享、mDNS、VPN、防火墙、网络切片、穿戴分布式网络 | `Ethernet / NetSharing / MDNS / Vpn / NetFirewall / Eap` | 2MB / 500KB |
 | `netstack` | 应用侧协议栈：HTTP(3)、WebSocket、Socket、TLS | `NetStack` | 3MB / 5MB |
 
+> 注：表中 ROM/RAM 数值直接取自各部件 `bundle.json` 的 `rom`/`ram` 字段，属于部件自声明的资源预算上限（非实测值），当前构建系统并不强制校验。
+
 每个部件的内部结构高度同构，形成“部件模板”：
 
 ```
