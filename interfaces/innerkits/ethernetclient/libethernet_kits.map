@@ -1,0 +1,93 @@
+# Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{
+  global:
+    extern "C++" {
+      VTT?for?OHOS::NetManagerStandard::InterfaceConfiguration;
+      vtable?for?OHOS::NetManagerStandard::InterfaceConfiguration;
+      VTT?for?OHOS::NetManagerStandard::MacAddressInfo;
+      vtable?for?OHOS::NetManagerStandard::MacAddressInfo;
+      VTT?for?OHOS::NetManagerStandard::INetAddr;
+      vtable?for?OHOS::NetManagerStandard::INetAddr;
+      VTT?for?OHOS::NetManagerStandard::StaticConfiguration;
+      vtable?for?OHOS::NetManagerStandard::StaticConfiguration;
+      "OHOS::NetManagerStandard::StaticConfiguration::ExtractNetAddrBySeparator(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::vector<OHOS::NetManagerStandard::INetAddr, std::__h::allocator<OHOS::NetManagerStandard::INetAddr>>&)";
+      "OHOS::NetManagerStandard::EthernetClient::GetMacAddress(std::__h::vector<OHOS::NetManagerStandard::MacAddressInfo, std::__h::allocator<OHOS::NetManagerStandard::MacAddressInfo>>&)";
+      "OHOS::NetManagerStandard::EthernetClient::GetIfaceConfig(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, OHOS::sptr<OHOS::NetManagerStandard::InterfaceConfiguration>&)";
+      "OHOS::NetManagerStandard::EthernetClient::EthernetClient()";
+      "OHOS::NetManagerStandard::EthernetClient::SetIfaceConfig(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, OHOS::sptr<OHOS::NetManagerStandard::InterfaceConfiguration>&)";
+      "OHOS::NetManagerStandard::EthernetClient::IsIfaceActive(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int&)";
+      "OHOS::NetManagerStandard::EthernetClient::GetAllActiveIfaces(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>>&)";
+      "OHOS::NetManagerStandard::EthernetClient::GetIfaceSupplierId(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned int&)";
+      "OHOS::NetManagerStandard::EthernetClient::~EthernetClient()";
+      "OHOS::NetManagerStandard::InterfaceStateCallbackStub::OnRemoteRequest(unsigned int, OHOS::MessageParcel&, OHOS::MessageParcel&, OHOS::MessageOption&)";
+      "OHOS::NetManagerStandard::EthernetClient::RegisterIfacesStateChanged(OHOS::sptr<OHOS::NetManagerStandard::InterfaceStateCallback> const&)";
+      "OHOS::NetManagerStandard::EthernetClient::UnregisterIfacesStateChanged(OHOS::sptr<OHOS::NetManagerStandard::InterfaceStateCallback> const&)";
+      "OHOS::NetManagerStandard::EthernetClient::GetInterfaceConfig(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, OHOS::nmd::InterfaceConfigurationParcel&)";
+      "OHOS::NetManagerStandard::EthernetClient::SetInterfaceUp(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::EthernetClient::SetInterfaceDown(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::EthernetClient::ResetFactory()";
+      "OHOS::NetManagerStandard::EthernetClient::SetInterfaceConfig(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, OHOS::nmd::InterfaceConfigurationParcel&)";
+      VTT?for?OHOS::NetManagerStandard::EthernetServiceProxy;
+      vtable?for?OHOS::NetManagerStandard::EthernetServiceProxy;
+      "OHOS::NetManagerStandard::EthernetServiceProxy::SetIfaceConfig(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, OHOS::sptr<OHOS::NetManagerStandard::InterfaceConfiguration> const&)";
+      "OHOS::NetManagerStandard::EthernetServiceProxy::IsIfaceActive(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int&)";
+      "OHOS::NetManagerStandard::EthernetServiceProxy::GetAllActiveIfaces(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>>&)";
+      "OHOS::NetManagerStandard::EthernetServiceProxy::ResetFactory()";
+      "OHOS::NetManagerStandard::EthernetServiceProxy::SetInterfaceUp(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::EthernetServiceProxy::GetInterfaceConfig(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, OHOS::NetManagerStandard::ConfigurationParcelIpc&)";
+      "OHOS::NetManagerStandard::EthernetServiceProxy::SetInterfaceDown(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::EthernetServiceProxy::SetInterfaceConfig(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, OHOS::NetManagerStandard::ConfigurationParcelIpc const&)";
+      "OHOS::NetManagerStandard::EthernetServiceProxy::GetMacAddress(std::__h::vector<OHOS::NetManagerStandard::MacAddressInfo, std::__h::allocator<OHOS::NetManagerStandard::MacAddressInfo>>&)";
+      "OHOS::NetManagerStandard::EthernetServiceProxy::GetIfaceConfig(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, OHOS::sptr<OHOS::NetManagerStandard::InterfaceConfiguration>&)";
+      "OHOS::NetManagerStandard::HttpProxy::HttpProxy()";
+      "OHOS::NetManagerStandard::EthernetClient::GetDeviceInformation(std::__h::vector<OHOS::NetManagerStandard::EthernetDeviceInfo, std::__h::allocator<OHOS::NetManagerStandard::EthernetDeviceInfo>>&)";
+      "OHOS::NetManagerStandard::EthernetServiceProxy::GetDeviceInformation(std::__h::vector<OHOS::NetManagerStandard::EthernetDeviceInfo, std::__h::allocator<OHOS::NetManagerStandard::EthernetDeviceInfo>>&)";
+      "OHOS::NetManagerStandard::NetRegisterEapCallbackStub::NetRegisterEapCallbackStub()";
+      "OHOS::NetManagerStandard::NetRegisterEapCallbackStub::~NetRegisterEapCallbackStub()";
+      "OHOS::NetManagerStandard::EapData::PrintLogInfo()";
+      "OHOS::NetManagerStandard::EthernetClient::RegisterCustomEapCallback(OHOS::NetManagerStandard::NetType, OHOS::sptr<OHOS::NetManagerStandard::INetRegisterEapCallback> const&)";
+      "OHOS::NetManagerStandard::EthernetClient::UnRegisterCustomEapCallback(OHOS::NetManagerStandard::NetType, OHOS::sptr<OHOS::NetManagerStandard::INetRegisterEapCallback> const&)";
+      "OHOS::NetManagerStandard::EapData::EapData()";
+      "OHOS::NetManagerStandard::EapData::~EapData()";
+      "OHOS::NetManagerStandard::EthernetClient::NotifyWpaEapInterceptInfo(OHOS::NetManagerStandard::NetType, OHOS::sptr<OHOS::NetManagerStandard::EapData> const&)";
+      "OHOS::NetManagerStandard::NetRegisterEapCallbackStub::OnRemoteRequest(unsigned int, OHOS::MessageParcel&, OHOS::MessageParcel&, OHOS::MessageOption&)";
+      "OHOS::NetManagerStandard::NetRegisterEapCallbackStub::OnRegisterCustomEapCallback(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetRegisterEapCallbackStub::OnReplyCustomEapDataEvent(int, OHOS::sptr<OHOS::NetManagerStandard::EapData> const&)";
+      "non-virtual thunk to OHOS::NetManagerStandard::NetRegisterEapCallbackStub::~NetRegisterEapCallbackStub()";
+      "non-virtual thunk to OHOS::NetManagerStandard::NetRegisterEapCallbackStub::OnRegisterCustomEapCallback(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "non-virtual thunk to OHOS::NetManagerStandard::NetRegisterEapCallbackStub::OnReplyCustomEapDataEvent(int, OHOS::sptr<OHOS::NetManagerStandard::EapData> const&)";
+      "virtual thunk to OHOS::NetManagerStandard::NetRegisterEapCallbackStub::~NetRegisterEapCallbackStub()";
+      "OHOS::NetManagerStandard::EthernetClient::RegCustomEapHandler(OHOS::NetManagerStandard::NetType, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, OHOS::sptr<OHOS::NetManagerStandard::INetEapPostbackCallback> const&)";
+      "OHOS::NetManagerStandard::NetEapPostbackCallbackStub::NetEapPostbackCallbackStub()";
+      "OHOS::NetManagerStandard::NetEapPostbackCallbackStub::~NetEapPostbackCallbackStub()";
+      "OHOS::NetManagerStandard::EthernetClient::ReplyCustomEapData(int, OHOS::sptr<OHOS::NetManagerStandard::EapData> const&)";
+      "OHOS::NetManagerStandard::NetEapPostbackCallbackStub::OnRemoteRequest(unsigned int, OHOS::MessageParcel&, OHOS::MessageParcel&, OHOS::MessageOption&)";
+      "OHOS::NetManagerStandard::NetEapPostbackCallbackStub::OnEapSupplicantPostback(OHOS::NetManagerStandard::NetType, OHOS::sptr<OHOS::NetManagerStandard::EapData> const&)";
+      "non-virtual thunk to OHOS::NetManagerStandard::NetEapPostbackCallbackStub::~NetEapPostbackCallbackStub()";
+      "non-virtual thunk to OHOS::NetManagerStandard::NetEapPostbackCallbackStub::OnEapSupplicantPostback(OHOS::NetManagerStandard::NetType, OHOS::sptr<OHOS::NetManagerStandard::EapData> const&)";
+      "virtual thunk to OHOS::NetManagerStandard::NetEapPostbackCallbackStub::~NetEapPostbackCallbackStub()";
+      "OHOS::NetManagerStandard::NetRegisterEapCallbackProxy::NetRegisterEapCallbackProxy(OHOS::sptr<OHOS::IRemoteObject> const&)";
+      "OHOS::NetManagerStandard::NetEapPostbackCallbackProxy::NetEapPostbackCallbackProxy(OHOS::sptr<OHOS::IRemoteObject> const&)";
+      "OHOS::NetManagerStandard::EthernetClient::StartEthEap(int, OHOS::NetManagerStandard::EthEapProfile const&)";
+      "OHOS::NetManagerStandard::EthernetClient::LogOffEthEap(int)";
+      "OHOS::NetManagerStandard::EthernetClient::EnableEthernetInterface()";
+      "OHOS::NetManagerStandard::EthernetClient::DisableEthernetInterface()";
+      "OHOS::NetManagerStandard::EthernetClient::IsEthernetEnabled(int&)";
+      VTT?for?OHOS::NetManagerStandard::EthEapProfile;
+      vtable?for?OHOS::NetManagerStandard::EthEapProfile;
+    };
+  local:
+   *;
+};

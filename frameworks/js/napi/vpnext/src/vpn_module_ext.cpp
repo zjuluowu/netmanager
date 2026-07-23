@@ -1,0 +1,590 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <cstdint>
+#include <memory>
+#include <mutex>
+
+#include "ability_manager_client.h"
+#include "errorcode_convertor.h"
+#include "extension_ability_info.h"
+#include "module_template.h"
+#include "napi/native_node_api.h"
+#include "napi_common_want.h"
+#include "napi_utils.h"
+#include "net_datashare_utils_iface.h"
+#include "net_manager_constants.h"
+#include "netmanager_ext_log.h"
+#include "networkvpn_client.h"
+#include "vpn_connection_ext.h"
+#include "vpn_extension_context.h"
+#include "vpn_monitor_ext.h"
+#include "want.h"
+#include "hi_app_event_report.h"
+#ifdef SUPPORT_SYSVPN
+#include "ipc_skeleton.h"
+#include "os_account_manager.h"
+#endif // SUPPORT_SYSVPN
+#include "vpn_observer_callback.h"
+#include "vpn_observer_instance_ext.h"
+
+namespace OHOS {
+namespace NetManagerStandard {
+constexpr int32_t ARG_NUM_0 = 0;
+constexpr int32_t PARAM_ONE = 1;
+#ifdef SUPPORT_SYSVPN
+constexpr const char *ENUM_SYSVPN_TYPE = "SysVpnType";
+constexpr const char *IKEV2_IPSEC_MSCHAPv2_TYPE = "IKEV2_IPSEC_MSCHAPv2";
+constexpr const char *IKEV2_IPSEC_PSK_TYPE = "IKEV2_IPSEC_PSK";
+constexpr const char *IKEV2_IPSEC_RSA_TYPE = "IKEV2_IPSEC_RSA";
+constexpr const char *L2TP_IPSEC_PSK_TYPE = "L2TP_IPSEC_PSK";
+constexpr const char *L2TP_IPSEC_RSA_TYPE = "L2TP_IPSEC_RSA";
+constexpr const char *L2TP_TYPE = "L2TP";
+#endif // SUPPORT_SYSVPN
+
+static napi_value CreateResolvedPromise(napi_env env)
+{
+    napi_deferred deferred = nullptr;
+    napi_value promise = nullptr;
+    if (napi_create_promise(env, &deferred, &promise) != napi_ok) {
+        return NapiUtils::GetUndefined(env);
+    }
+    napi_resolve_deferred(env, deferred, NapiUtils::GetUndefined(env));
+    return promise;
+}
+
+static napi_value CreateRejectedPromise(napi_env env)
+{
+    napi_deferred deferred = nullptr;
+    napi_value promise = nullptr;
+    if (napi_create_promise(env, &deferred, &promise) != napi_ok) {
+        return NapiUtils::GetUndefined(env);
+    }
+    napi_reject_deferred(env, deferred, NapiUtils::GetUndefined(env));
+    return promise;
+}
+
+static void ResolvePromiseInIpcThread(napi_env env, napi_deferred deferred)
+{
+    std::vector<std::pair<sptr<VpnObserver>, std::shared_ptr<EventManager>>> observers;
+    {
+        std::lock_guard<std::mutex> lock{VpnObserverInstance::g_vpnObserverMutex};
+        NETMANAGER_EXT_LOGI("[ResolvePromiseInIpcThread] Notifying %{public}zu observers",
+                            VpnObserverInstance::observerInstanceMap_.size());
+        observers.reserve(VpnObserverInstance::observerInstanceMap_.size());
+        for (auto &iter : VpnObserverInstance::observerInstanceMap_) {
+            if (iter.second != nullptr && iter.second->GetEventManager() != nullptr) {
+                observers.emplace_back(iter.first, iter.second->GetEventManager());
+            }
+        }
+    }
+    
+    napi_send_event(
+        env, [env, deferred, observers]() {
+            napi_resolve_deferred(env, deferred, NapiUtils::GetUndefined(env));
+            for (auto &item : observers) {
+                if (item.second && item.second->HasEventListener(EVENT_AUTHORIZATION)) {
+                    item.first->HandleAuthorizeResult(true);
+                }
+            }
+        },
+        napi_eprio_high);
+}
+
+static void RejectPromiseInIpcThread(napi_env env, napi_deferred deferred)
+{
+    std::vector<std::pair<sptr<VpnObserver>, std::shared_ptr<EventManager>>> observers;
+    {
+        std::lock_guard<std::mutex> lock{VpnObserverInstance::g_vpnObserverMutex};
+        NETMANAGER_EXT_LOGI("[RejectPromiseInIpcThread] Notifying %{public}zu observers",
+                            VpnObserverInstance::observerInstanceMap_.size());
+        observers.reserve(VpnObserverInstance::observerInstanceMap_.size());
+        for (auto &iter : VpnObserverInstance::observerInstanceMap_) {
+            if (iter.second != nullptr && iter.second->GetEventManager() != nullptr) {
+                observers.emplace_back(iter.first, iter.second->GetEventManager());
+            }
+        }
+    }
+    
+    napi_send_event(
+        env, [env, deferred, observers]() {
+            napi_reject_deferred(env, deferred, NapiUtils::GetUndefined(env));
+            for (auto &item : observers) {
+                if (item.second && item.second->HasEventListener(EVENT_AUTHORIZATION)) {
+                    item.first->HandleAuthorizeResult(false);
+                }
+            }
+        },
+        napi_eprio_high);
+}
+
+static napi_value CreateObserveDataSharePromise(napi_env env, const std::string &bundleName)
+{
+    napi_deferred deferred = nullptr;
+    napi_value promise = nullptr;
+    if (napi_create_promise(env, &deferred, &promise) != napi_ok) {
+        return NapiUtils::GetUndefined(env);
+    }
+
+    auto once = std::make_shared<std::once_flag>();
+    auto callbackId = std::make_shared<int32_t>();
+    auto deferWrapper = std::make_shared<napi_deferred>();
+    *deferWrapper = deferred;
+    std::string key = bundleName;
+#ifdef SUPPORT_SYSVPN
+    int32_t userId = AppExecFwk::Constants::UNSPECIFIED_USERID;
+    int32_t uid = IPCSkeleton::GetCallingUid();
+    if (AccountSA::OsAccountManager::GetOsAccountLocalIdFromUid(uid, userId) != ERR_OK) {
+        NETMANAGER_EXT_LOGE("CreateObserveDataSharePromise::GetOsAccountLocalIdFromUid error, uid: %{public}d.", uid);
+        return NapiUtils::GetUndefined(env);
+    }
+    key = bundleName + "_" + std::to_string(userId);
+#endif // SUPPORT_SYSVPN
+    auto onChange = [env, deferWrapper, key, once, callbackId]() {
+        if (!once) {
+            return;
+        }
+        std::call_once(*once, [env, deferWrapper, key, callbackId]() {
+            bool vpnDialogSelect = false;
+            std::string vpnExtMode = std::to_string(vpnDialogSelect);
+            int32_t ret = NetDataShareHelperUtilsIface::Query(VPNEXT_MODE_URI, key, vpnExtMode);
+            NETMANAGER_EXT_LOGI("query vpn state after dialog: %{public}d %{public}s", ret, vpnExtMode.c_str());
+            if (callbackId) {
+                NetDataShareHelperUtilsIface::UnregisterObserver(VPNEXT_MODE_URI, *callbackId);
+            }
+            if (deferWrapper && *deferWrapper) {
+                auto deferred = *deferWrapper;
+                *deferWrapper = nullptr;
+                if (vpnExtMode == "1") {
+                    ResolvePromiseInIpcThread(env, deferred);
+                } else {
+                    RejectPromiseInIpcThread(env, deferred);
+                }
+            }
+        });
+    };
+
+    *callbackId = NetDataShareHelperUtilsIface::RegisterObserver(VPNEXT_MODE_URI, onChange);
+    return promise;
+}
+
+static void *MakeDataExt(napi_env env, size_t argc, napi_value *argv, std::shared_ptr<EventManager>& manager)
+{
+    if ((argc != PARAM_ONE) || (NapiUtils::GetValueType(env, argv[ARG_NUM_0]) != napi_object)) {
+        NETMANAGER_EXT_LOGE("funciton prameter error");
+        napi_throw_error(env, std::to_string(NETMANAGER_EXT_ERR_PARAMETER_ERROR).c_str(), "Parameter error");
+        return nullptr;
+    }
+
+    VpnExtensionContext *vpnExtensionContext = nullptr;
+    napi_status status = napi_unwrap(env, argv[ARG_NUM_0], reinterpret_cast<void **>(&vpnExtensionContext));
+    if (status != napi_ok || vpnExtensionContext == nullptr) {
+        NETMANAGER_EXT_LOGE("Failed to get vpnExtensionContext napi instance");
+        napi_throw_error(env, std::to_string(NETMANAGER_EXT_ERR_PARAMETER_ERROR).c_str(), "Parameter error");
+        return nullptr;
+    }
+
+    int32_t ret = NetworkVpnClient::GetInstance().CreateVpnConnection(true);
+    if (ret != NETMANAGER_EXT_SUCCESS) {
+        NETMANAGER_EXT_LOGE("execute CreateVpnConnection failed: %{public}d", ret);
+        std::string errorMsg = NetBaseErrorCodeConvertor().ConvertErrorCode(ret);
+        napi_throw_error(env, std::to_string(ret).c_str(), errorMsg.c_str());
+        return nullptr;
+    }
+    return reinterpret_cast<void *>(&NetworkVpnClient::GetInstance());
+}
+
+static std::string Replace(std::string s)
+{
+    std::string tmp = VPN_DIALOG_POSTFIX;
+    auto pos = s.find(tmp);
+    if (pos == std::string::npos) {
+        return s;
+    }
+    s.replace(pos, tmp.length(), "");
+    return s;
+}
+
+#ifdef SUPPORT_SYSVPN
+static void InitSysVpnType(napi_env env, napi_value exports)
+{
+    NapiUtils::DefineProperties(env, exports, {
+        DECLARE_NAPI_STATIC_PROPERTY(IKEV2_IPSEC_MSCHAPv2_TYPE,
+            NapiUtils::CreateUint32(env, static_cast<uint32_t>(VpnType::IKEV2_IPSEC_MSCHAPv2))),
+        DECLARE_NAPI_STATIC_PROPERTY(IKEV2_IPSEC_PSK_TYPE,
+            NapiUtils::CreateUint32(env, static_cast<uint32_t>(VpnType::IKEV2_IPSEC_PSK))),
+        DECLARE_NAPI_STATIC_PROPERTY(IKEV2_IPSEC_RSA_TYPE,
+            NapiUtils::CreateUint32(env, static_cast<uint32_t>(VpnType::IKEV2_IPSEC_RSA))),
+        DECLARE_NAPI_STATIC_PROPERTY(L2TP_IPSEC_PSK_TYPE,
+            NapiUtils::CreateUint32(env, static_cast<uint32_t>(VpnType::L2TP_IPSEC_PSK))),
+        DECLARE_NAPI_STATIC_PROPERTY(L2TP_IPSEC_RSA_TYPE,
+            NapiUtils::CreateUint32(env, static_cast<uint32_t>(VpnType::L2TP_IPSEC_RSA))),
+        DECLARE_NAPI_STATIC_PROPERTY(L2TP_TYPE,
+            NapiUtils::CreateUint32(env, static_cast<uint32_t>(VpnType::L2TP))),
+    });
+ 
+    std::initializer_list<napi_property_descriptor> properties = {
+        DECLARE_NAPI_STATIC_PROPERTY(IKEV2_IPSEC_MSCHAPv2_TYPE,
+            NapiUtils::CreateUint32(env, static_cast<uint32_t>(VpnType::IKEV2_IPSEC_MSCHAPv2))),
+        DECLARE_NAPI_STATIC_PROPERTY(IKEV2_IPSEC_PSK_TYPE,
+            NapiUtils::CreateUint32(env, static_cast<uint32_t>(VpnType::IKEV2_IPSEC_PSK))),
+        DECLARE_NAPI_STATIC_PROPERTY(IKEV2_IPSEC_RSA_TYPE,
+            NapiUtils::CreateUint32(env, static_cast<uint32_t>(VpnType::IKEV2_IPSEC_RSA))),
+        DECLARE_NAPI_STATIC_PROPERTY(L2TP_IPSEC_PSK_TYPE,
+            NapiUtils::CreateUint32(env, static_cast<uint32_t>(VpnType::L2TP_IPSEC_PSK))),
+        DECLARE_NAPI_STATIC_PROPERTY(L2TP_IPSEC_RSA_TYPE,
+            NapiUtils::CreateUint32(env, static_cast<uint32_t>(VpnType::L2TP_IPSEC_RSA))),
+        DECLARE_NAPI_STATIC_PROPERTY(L2TP_TYPE,
+            NapiUtils::CreateUint32(env, static_cast<uint32_t>(VpnType::L2TP))),
+    };
+ 
+    napi_value sysVpnType = NapiUtils::CreateObject(env);
+    NapiUtils::DefineProperties(env, sysVpnType, properties);
+    NapiUtils::SetNamedProperty(env, exports, ENUM_SYSVPN_TYPE, sysVpnType);
+}
+
+int32_t CheckVpnPermission(const std::string &bundleName, std::string &vpnExtMode)
+{
+    int32_t userId = AppExecFwk::Constants::UNSPECIFIED_USERID;
+    int32_t uid = IPCSkeleton::GetCallingUid();
+    if (AccountSA::OsAccountManager::GetOsAccountLocalIdFromUid(uid, userId) != ERR_OK) {
+        NETMANAGER_EXT_LOGE("checkVpnPermission::GetOsAccountLocalIdFromUid error, uid: %{public}d.", uid);
+        return -1;
+    }
+    NETMANAGER_EXT_LOGI("checkVpnPermission uid: %{public}d, userid: %{public}d", uid, userId);
+    std::string key = bundleName + "_" + std::to_string(userId);
+    int32_t ret = NetDataShareHelperUtilsIface::Query(VPNEXT_MODE_URI, key, vpnExtMode);
+    if (ret != 0 || vpnExtMode != "1") {
+        ret = NetDataShareHelperUtilsIface::Query(VPNEXT_MODE_URI, bundleName, vpnExtMode);
+        if (ret != 0 || vpnExtMode != "1") {
+            NETMANAGER_EXT_LOGE("checkVpnPermission::dataShareHelperUtils Query error, err = %{public}d", ret);
+            return -1;
+        }
+    }
+    return 0;
+}
+#endif // SUPPORT_SYSVPN
+
+napi_value ProcessPermissionRequests(napi_env env, const std::string &bundleName, const std::string &abilityName)
+{
+    std::string selfAppName;
+    std::string selfBundleName;
+    auto getAppNameRes = NetworkVpnClient::GetInstance().GetSelfAppName(selfAppName, selfBundleName);
+    NETMANAGER_EXT_LOGI("StartVpnExtensionAbility SelfAppName = %{public}s %{public}d", selfAppName.c_str(),
+        getAppNameRes);
+    if (bundleName != selfBundleName) {
+        NETMANAGER_EXT_LOGE("Not allowed to start other bundleName vpn!");
+        return CreateRejectedPromise(env);
+    }
+
+    bool vpnDialogSelect = false;
+    std::string vpnExtMode = std::to_string(vpnDialogSelect);
+    int32_t ret = 0;
+#ifdef SUPPORT_SYSVPN
+    ret = CheckVpnPermission(bundleName, vpnExtMode);
+#else
+    ret = NetDataShareHelperUtilsIface::Query(VPNEXT_MODE_URI, bundleName, vpnExtMode);
+#endif // SUPPORT_SYSVPN
+    if (ret != 0 || vpnExtMode != "1") {
+        NETMANAGER_EXT_LOGE("dataShareHelperUtils Query error, err = %{public}d", ret);
+        VpnMonitor::GetInstance().ShowVpnDialog(bundleName, abilityName, selfAppName);
+        return CreateObserveDataSharePromise(env, bundleName);
+    }
+    return nullptr;
+}
+
+napi_value StartVpnExtensionAbility(napi_env env, napi_callback_info info)
+{
+    auto hiAppEventReport = std::make_shared<HiAppEventReport>("NetworkKit", "VpnStartVpnExtensionAbility");
+    napi_value thisVal = nullptr;
+    std::size_t argc = MAX_PARAM_NUM;
+
+    napi_value argv[MAX_PARAM_NUM] = {nullptr};
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVal, nullptr));
+    if ((argc != PARAM_ONE) || (NapiUtils::GetValueType(env, argv[ARG_NUM_0]) != napi_object)) {
+        NETMANAGER_EXT_LOGE("funciton prameter error");
+        napi_throw_error(env, std::to_string(NETMANAGER_EXT_ERR_PARAMETER_ERROR).c_str(), "Parameter error");
+        return CreateRejectedPromise(env);
+    }
+    AAFwk::Want want;
+    if (!AppExecFwk::UnwrapWant(env, argv[0], want)) {
+        NETMANAGER_EXT_LOGE("Failed to parse want");
+        napi_throw_error(env, std::to_string(NETMANAGER_EXT_ERR_PARAMETER_ERROR).c_str(), "Parse want error");
+        return CreateRejectedPromise(env);
+    }
+
+    VpnMonitor::GetInstance().CacheCurrentWant(want);
+    std::string bundleName = want.GetElement().GetBundleName();
+    std::string abilityName = want.GetElement().GetAbilityName();
+    std::string selfAppName;
+    std::string selfBundleName;
+    NetworkVpnClient::GetInstance().GetSelfAppName(selfAppName, selfBundleName);
+    if (selfBundleName != VPN_DIALOG_BUNDLENAME || abilityName.find(VPN_DIALOG_POSTFIX) == std::string::npos) {
+        napi_value retVal = ProcessPermissionRequests(env, bundleName, abilityName);
+        if (retVal != nullptr) {
+            return retVal;
+        }
+    }
+    auto elem = want.GetElement();
+    elem.SetAbilityName(Replace(abilityName));
+    want.SetElement(elem);
+    if (OHOS::system::GetBoolParameter("persist.edm.vpn_disable", false)) {
+        napi_throw_error(env, std::to_string(NETMANAGER_EXT_ERR_PERMISSION_DENIED).c_str(),
+            "persist.edm.vpn_disable disallowed setting up vpn");
+        return CreateRejectedPromise(env);
+    }
+    auto err = NetworkVpnClient::GetInstance().StartVpnExtensionAbility(want);
+    NETMANAGER_EXT_LOGI("execute StartVpnExtensionAbility result: %{public}d", err);
+    hiAppEventReport->ReportSdkEvent(RESULT_SUCCESS, err);
+    return CreateResolvedPromise(env);
+}
+
+napi_value StopVpnExtensionAbility(napi_env env, napi_callback_info info)
+{
+    auto hiAppEventReport = std::make_shared<HiAppEventReport>("NetworkKit", "VpnStopVpnExtensionAbility");
+    napi_value thisVal = nullptr;
+    std::size_t argc = MAX_PARAM_NUM;
+
+    napi_value argv[MAX_PARAM_NUM] = {nullptr};
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVal, nullptr));
+    if ((argc != PARAM_ONE) || (NapiUtils::GetValueType(env, argv[ARG_NUM_0]) != napi_object)) {
+        NETMANAGER_EXT_LOGE("funciton prameter error");
+        napi_throw_error(env, std::to_string(NETMANAGER_EXT_ERR_PARAMETER_ERROR).c_str(), "Parameter error");
+        return CreateRejectedPromise(env);
+    }
+    AAFwk::Want want;
+    if (!AppExecFwk::UnwrapWant(env, argv[0], want)) {
+        NETMANAGER_EXT_LOGE("Failed to parse want");
+        napi_throw_error(env, std::to_string(NETMANAGER_EXT_ERR_PARAMETER_ERROR).c_str(), "Parse want error");
+        return CreateRejectedPromise(env);
+    }
+
+    std::string bundleName = want.GetElement().GetBundleName();
+    std::string selfAppName;
+    std::string selfBundleName;
+    auto getAppNameRes = NetworkVpnClient::GetInstance().GetSelfAppName(selfAppName, selfBundleName);
+    NETMANAGER_EXT_LOGI("StopVpnExtensionAbility SelfAppName = %{public}s %{public}d", selfAppName.c_str(),
+        getAppNameRes);
+    if (bundleName != selfBundleName) {
+        NETMANAGER_EXT_LOGE("Not allowed to stop other bundleName vpn!");
+        return CreateRejectedPromise(env);
+    }
+    bool vpnDialogSelect = false;
+    std::string vpnExtMode = std::to_string(vpnDialogSelect);
+    int32_t ret = 0;
+#ifdef SUPPORT_SYSVPN
+    ret = CheckVpnPermission(bundleName, vpnExtMode);
+#else
+    ret = NetDataShareHelperUtilsIface::Query(VPNEXT_MODE_URI, bundleName, vpnExtMode);
+#endif // SUPPORT_SYSVPN
+    if (ret != 0 || vpnExtMode != "1") {
+        NETMANAGER_EXT_LOGE("dataShareHelperUtils Query error, err = %{public}d", ret);
+        hiAppEventReport->ReportSdkEvent(RESULT_SUCCESS, ret);
+        return CreateRejectedPromise(env);
+    }
+
+    auto err = NetworkVpnClient::GetInstance().StopVpnExtensionAbility(want);
+    NETMANAGER_EXT_LOGI("execute StopExtensionAbility result: %{public}d", err);
+    hiAppEventReport->ReportSdkEvent(RESULT_SUCCESS, err);
+    return CreateResolvedPromise(env);
+}
+
+static napi_value CreateVpnConnection(napi_env env, napi_callback_info info)
+{
+    return ModuleTemplate::NewInstance(env, info, VPN_CONNECTION_EXT, MakeDataExt, [](napi_env, void *data, void *) {
+        NETMANAGER_EXT_LOGI("finalize VpnConnection");
+    });
+}
+
+static void *MakeVpnObserverExt(napi_env env, size_t argc, napi_value *argv, std::shared_ptr<EventManager>& manager)
+{
+    std::unique_ptr<VpnObserverInstance, decltype(&VpnObserverInstance::DeleteVpnObserver)> vpnObserverInstance(
+        VpnObserverInstance::MakeVpnObserver(env, manager), VpnObserverInstance::DeleteVpnObserver);
+    if (vpnObserverInstance == nullptr) {
+        NETMANAGER_EXT_LOGE("demotest vpnObserverInstance nullptr");
+        return nullptr;
+    }
+    return vpnObserverInstance.release();
+}
+
+static napi_value CreateVpnObserver(napi_env env, napi_callback_info info)
+{
+    return ModuleTemplate::NewInstance(env, info, VPN_OBSERVER_EXT, MakeVpnObserverExt,
+        [](napi_env, void *data, void *) {
+        NETMANAGER_EXT_LOGI("finalize VpnObserver");
+        auto *vpnObserverInstance = static_cast<VpnObserverInstance *>(data);
+        if (vpnObserverInstance == nullptr) {
+            return;
+        }
+        auto manager = vpnObserverInstance->GetEventManager();
+        if (manager != nullptr) {
+            manager->DeleteAllListener();
+        }
+        VpnObserverInstance::DeleteVpnObserver(vpnObserverInstance);
+    });
+}
+
+static napi_value UpdateVpnAuthorize(napi_env env, napi_callback_info info)
+{
+    napi_value thisVal = nullptr;
+    std::size_t argc = MAX_PARAM_NUM;
+    napi_value argv[MAX_PARAM_NUM] = {nullptr};
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVal, nullptr));
+
+    if ((argc != PARAM_ONE) || (NapiUtils::GetValueType(env, argv[ARG_NUM_0]) != napi_string)) {
+        NETMANAGER_EXT_LOGE("funciton prameter error");
+        napi_throw_error(env, std::to_string(NETMANAGER_EXT_ERR_PARAMETER_ERROR).c_str(), "Parameter error");
+        return nullptr;
+    }
+    std::string bundleName = NapiUtils::GetStringFromValueUtf8(env, argv[ARG_NUM_0]);
+
+    bool vpnDialogSelect = true;
+    if (bundleName.find(VPN_DIALOG_POSTFIX) != std::string::npos) {
+        vpnDialogSelect = false;
+        bundleName = Replace(bundleName);
+    }
+    std::string vpnExtMode = std::to_string(vpnDialogSelect);
+    int32_t ret = 0;
+#ifdef SUPPORT_SYSVPN
+    int32_t userId = AppExecFwk::Constants::UNSPECIFIED_USERID;
+    int32_t uid = IPCSkeleton::GetCallingUid();
+    if (AccountSA::OsAccountManager::GetOsAccountLocalIdFromUid(uid, userId) != ERR_OK) {
+        NETMANAGER_EXT_LOGE("GetOsAccountLocalIdFromUid error, uid: %{public}d.", uid);
+        return nullptr;
+    }
+    std::string key = bundleName + "_" + std::to_string(userId);
+    ret = NetDataShareHelperUtilsIface::Update(VPNEXT_MODE_URI, key, vpnExtMode);
+#else
+    ret = NetDataShareHelperUtilsIface::Update(VPNEXT_MODE_URI, bundleName, vpnExtMode);
+#endif // SUPPORT_SYSVPN
+    NETMANAGER_EXT_LOGI("UpdateVpnAuthorize result. ret = %{public}d", ret);
+
+    napi_value jsValue = nullptr;
+    napi_get_boolean(env, true, &jsValue);
+    return jsValue;
+}
+
+napi_value VpnObserverExt::OnAuthorization(napi_env env, napi_callback_info info)
+{
+    napi_value thisVal = nullptr;
+    size_t paramsCount = MAX_PARAM_NUM;
+    napi_value params[MAX_PARAM_NUM] = {nullptr};
+    NAPI_CALL(env, napi_get_cb_info(env, info, &paramsCount, params, &thisVal, nullptr));
+
+    if (paramsCount != 1 || NapiUtils::GetValueType(env, params[0]) != napi_function) {
+        NETMANAGER_EXT_LOGE("napi OnAuthorization interface para: [function]");
+        return NapiUtils::GetUndefined(env);
+    }
+
+    std::shared_ptr<EventManager> *sharedManager = nullptr;
+    napi_status status = napi_unwrap(env, thisVal, reinterpret_cast<void **>(&sharedManager));
+    if (status != napi_ok || sharedManager == nullptr || *sharedManager == nullptr) {
+        NETMANAGER_EXT_LOGE("napi_unwrap failed or sharedManager is null");
+        return NapiUtils::GetUndefined(env);
+    }
+    auto manager = *sharedManager;
+    if (manager == nullptr) {
+        NETMANAGER_EXT_LOGE("manager is null");
+        return NapiUtils::GetUndefined(env);
+    }
+    manager->AddListener(env, EVENT_AUTHORIZATION, params[0], false, false);
+    return NapiUtils::GetUndefined(env);
+}
+
+napi_value VpnObserverExt::OffAuthorization(napi_env env, napi_callback_info info)
+{
+    napi_value thisVal = nullptr;
+    size_t paramsCount = MAX_PARAM_NUM;
+    napi_value params[MAX_PARAM_NUM] = {nullptr};
+    NAPI_CALL(env, napi_get_cb_info(env, info, &paramsCount, params, &thisVal, nullptr));
+
+    std::shared_ptr<EventManager> *sharedManager = nullptr;
+    napi_status status = napi_unwrap(env, thisVal, reinterpret_cast<void **>(&sharedManager));
+    if (status != napi_ok || sharedManager == nullptr || *sharedManager == nullptr) {
+        NETMANAGER_EXT_LOGE("napi_unwrap failed or sharedManager is null");
+        return NapiUtils::GetUndefined(env);
+    }
+    auto manager = *sharedManager;
+    if (manager == nullptr) {
+        NETMANAGER_EXT_LOGE("manager is null");
+        return NapiUtils::GetUndefined(env);
+    }
+    if (paramsCount == 0) {
+        manager->DeleteListener(EVENT_AUTHORIZATION);
+        return NapiUtils::GetUndefined(env);
+    }
+
+    if (paramsCount != 1 || NapiUtils::GetValueType(env, params[0]) != napi_function) {
+        NETMANAGER_EXT_LOGE("napi OffAuthorization interface para: [function]");
+        return NapiUtils::GetUndefined(env);
+    }
+
+    manager->DeleteListener(EVENT_AUTHORIZATION, params[0]);
+    return NapiUtils::GetUndefined(env);
+}
+
+napi_value RegisterVpnExtModule(napi_env env, napi_value exports)
+{
+    NapiUtils::DefineProperties(env, exports,
+                                {
+                                    DECLARE_NAPI_FUNCTION(CREATE_VPN_CONNECTION, CreateVpnConnection),
+                                    DECLARE_NAPI_FUNCTION(START_VPN_EXTENSION, StartVpnExtensionAbility),
+                                    DECLARE_NAPI_FUNCTION(STOP_VPN_EXTENSION, StopVpnExtensionAbility),
+                                    DECLARE_NAPI_FUNCTION(UPDATE_VPN_AUTHORIZE, UpdateVpnAuthorize),
+                                    DECLARE_NAPI_FUNCTION(CREATE_VPN_OBSERVER, CreateVpnObserver),
+                                });
+    ModuleTemplate::DefineClass(env, exports,
+                                {
+                                    DECLARE_NAPI_FUNCTION(ON, VpnConnectionExt::On),
+                                    DECLARE_NAPI_FUNCTION(OFF, VpnConnectionExt::Off),
+                                    DECLARE_NAPI_FUNCTION(SET_UP_EXT, VpnConnectionExt::SetUp),
+                                    DECLARE_NAPI_FUNCTION(PROTECT_EXT, VpnConnectionExt::Protect),
+                                    DECLARE_NAPI_FUNCTION(DESTROY_EXT, VpnConnectionExt::Destroy),
+                                    DECLARE_NAPI_FUNCTION(PROTECT_PROCESS_NET_EXT,
+                                        VpnConnectionExt::ProtectProcessNet),
+                                    #ifdef SUPPORT_SYSVPN
+                                    DECLARE_NAPI_FUNCTION(GENERATE_VPN_ID_EXT, VpnConnectionExt::GenerateVpnId),
+                                    #endif // SUPPORT_SYSVPN
+                                },
+                                VPN_CONNECTION_EXT);
+    ModuleTemplate::DefineClass(env, exports,
+                                {
+                                    DECLARE_NAPI_FUNCTION(ON_AUTHORIZATION, VpnObserverExt::OnAuthorization),
+                                    DECLARE_NAPI_FUNCTION(OFF_AUTHORIZATION, VpnObserverExt::OffAuthorization),
+                                },
+                                VPN_OBSERVER_EXT);
+#ifdef SUPPORT_SYSVPN
+    InitSysVpnType(env, exports);
+#endif // SUPPORT_SYSVPN
+    return exports;
+}
+
+static napi_module g_vpnModule = {
+    .nm_version = 1,
+    .nm_flags = 0,
+    .nm_filename = nullptr,
+    .nm_register_func = RegisterVpnExtModule,
+    .nm_modname = VPN_EXT_MODULE_NAME,
+    .nm_priv = nullptr,
+    .reserved = {nullptr},
+};
+
+extern "C" __attribute__((constructor)) void VpnNapiRegister()
+{
+    napi_module_register(&g_vpnModule);
+}
+} // namespace NetManagerStandard
+} // namespace OHOS
+

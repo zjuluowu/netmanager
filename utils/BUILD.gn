@@ -1,0 +1,51 @@
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_ext/netmanager_ext_config.gni")
+
+group("common_target") {
+  deps = [
+    ":net_event_report"
+  ]
+}
+
+config("netmgr_ext_common_config") {
+  include_dirs = [
+    "event_report/include",
+  ]
+}
+
+ohos_shared_library("net_event_report") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    blocklist = "./cfi_blocklist.txt"
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  cflags = common_cflags
+
+  cflags_cc = common_cflags
+
+  sources = [ "event_report/src/net_event_report.cpp" ]
+
+  public_configs = [ ":netmgr_ext_common_config" ]
+
+  external_deps = [ "hisysevent:libhisysevent" ]
+
+  part_name = "netmanager_ext"
+  subsystem_name = "communication"
+}

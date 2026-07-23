@@ -1,0 +1,236 @@
+# Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/config/components/idl_tool/idl.gni")
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_ext/netmanager_ext_config.gni")
+
+config("net_conn_manager_if_config") {
+  include_dirs = [
+    "include",
+    "include/ipc",
+    "${target_gen_dir}",
+    "$EXT_INNERKITS_ROOT/include",
+  ]
+
+  defines = []
+  if (is_double_framework) {
+    defines += [ "CONFIG_DUAL_FRAMEWORK" ]
+  }
+  if (target_cpu == "arm") {
+    defines += [ "BINDER_IPC_32BIT" ]
+  }
+  if (is_standard_system) {
+    defines += [ "CONFIG_STANDARD_SYSTEM" ]
+  }
+  if (defined(build_public_version) && build_public_version) {
+    defines += [ "BUILD_PUBLIC_VERSION" ]
+  }
+
+  cflags = common_cflags
+
+  cflags_cc = common_cflags
+
+  if (netmanager_ext_feature_sysvpn) {
+    cflags += sysvpn_flags
+    cflags_cc += sysvpn_flags
+    defines += [ "SUPPORT_SYSVPN" ]
+  }
+}
+
+ohos_static_library("networkvpn_parcel") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [ "$VPN_INNERKITS_SOURCE_DIR/src/vpn_config.cpp", 
+              "$VPN_INNERKITS_SOURCE_DIR/src/vpn_state.cpp"
+  ]
+
+  if (netmanager_ext_feature_sysvpn) {
+    sources += [
+      "$VPN_INNERKITS_SOURCE_DIR/src/ipsecvpn_config.cpp",
+      "$VPN_INNERKITS_SOURCE_DIR/src/l2tpvpn_config.cpp",
+      "$VPN_INNERKITS_SOURCE_DIR/src/openvpn_config.cpp",
+      "$VPN_INNERKITS_SOURCE_DIR/src/sysvpn_config.cpp",
+      "$VPN_INNERKITS_SOURCE_DIR/src/vpn_data_bean.cpp",
+    ]
+  }
+
+  include_dirs = [
+    "$EXT_INNERKITS_ROOT/include",
+    "$EXT_INNERKITS_ROOT/netvpnclient/include",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "netmanager_base:net_conn_manager_if",
+    "netmanager_base:net_manager_common",
+  ]
+
+  part_name = "netmanager_ext"
+  subsystem_name = "communication"
+}
+
+idl_gen_interface("networkvpn_interface") {
+  sources = [ "INetworkVpnService.idl" ]
+  sources_callback = [ "IVpnEventCallback.idl" ]
+  inputs = ["IVpnEventCallback.idl"]
+}
+
+config("networkvpn_interface_stub_config") {
+  include_dirs = [
+    "include",
+    "${target_gen_dir}",
+  ]
+  if (netmanager_ext_feature_sysvpn) {
+    cflags = sysvpn_flags
+    cflags_cc = sysvpn_flags
+    defines = [ "SUPPORT_SYSVPN" ]
+  }
+}
+
+ohos_static_library("networkvpn_interface_stub") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
+  public_configs = [ ":networkvpn_interface_stub_config" ]
+  output_values = get_target_outputs(":networkvpn_interface")
+  sources = []
+  sources += filter_include(output_values, [ "*ice_stub.cpp" ])
+  sources += filter_include(output_values, [ "*ack_proxy.cpp" ])
+  deps = [ ":networkvpn_interface" ]
+  external_deps = [
+    "ability_base:want",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "samgr:samgr_proxy",
+    "netmanager_base:net_native_manager_if",
+    "c_utils:utils",
+  ]
+  part_name = "netmanager_ext"
+  subsystem_name = "communication"
+}
+
+ohos_shared_library("net_vpn_manager_if") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$VPN_INNERKITS_SOURCE_DIR/src/networkvpn_client.cpp",
+    "$VPN_INNERKITS_SOURCE_DIR/src/vpn_interface.cpp",
+  ]
+
+  output_values = get_target_outputs(":networkvpn_interface")
+  sources += filter_include(output_values, [ "*ice_proxy.cpp" ])
+  sources += filter_include(output_values, [ "*ack_stub.cpp" ])
+
+  public_configs = [ ":net_conn_manager_if_config" ]
+
+  deps = [ ":networkvpn_parcel" ]
+  deps += [ ":networkvpn_interface" ]
+
+  external_deps = [
+    "ability_base:want",
+    "bounds_checking_function:libsec_shared",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "netmanager_base:fwmark_client",
+    "samgr:samgr_proxy",
+    "ffrt:libffrt",
+  ]
+
+  public_external_deps = [
+    "netmanager_base:net_manager_common",
+    "netmanager_base:net_native_manager_if",
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetworkVpn\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  if (enable_netmgr_ext_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  part_name = "netmanager_ext"
+  subsystem_name = "communication"
+}
+
+ohos_shared_library("net_vpn_permission_if") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$VPN_INNERKITS_SOURCE_DIR/src/networkvpn_permission_client.cpp",
+  ]
+
+  output_values = get_target_outputs(":networkvpn_interface")
+  sources += filter_include(output_values, [ "*ice_proxy.cpp" ])
+
+  public_configs = [ ":net_conn_manager_if_config" ]
+  deps = [
+    ":networkvpn_interface",
+    ":networkvpn_parcel",
+  ]
+  external_deps = [
+    "ability_base:want",
+    "ipc:ipc_single",
+    "hilog:libhilog",
+    "samgr:samgr_proxy",
+    "netmanager_base:net_conn_parcel",
+  ]
+
+  version_script = "libnet_vpn_permission_if.map"
+
+  cflags = [
+    "-D_FORTIFY_SOURCE=2",
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Oz",
+  ]
+
+  cflags_cc = [
+    "-D_FORTIFY_SOURCE=2",
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Oz",
+  ]
+
+  ldflags = [
+    "-Wl,--exclude-libs=ALL",
+    "-Wl,--gc-sections",
+  ]
+
+  part_name = "netmanager_ext"
+  subsystem_name = "communication"
+}

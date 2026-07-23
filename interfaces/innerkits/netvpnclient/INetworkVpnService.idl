@@ -1,0 +1,47 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+ 
+import IVpnEventCallback;
+sequenceable SysvpnConfig..OHOS.NetManagerStandard.SysVpnConfig;
+sequenceable Want..OHOS.AAFwk.Want;
+rawdata OHOS.NetManagerStandard.VpnConfigRawData;
+interface OHOS.NetManagerStandard.INetworkVpnService {
+    void Prepare([out] boolean isExistVpn, [out] boolean isRun, [out] String pkg);
+    void SetUpVpn([in] VpnConfigRawData configData, [in] boolean isVpnExtCall, [in] boolean isInternalChannel);
+    void Protect([in] boolean isVpnExtCall);
+    void DestroyVpn([in] boolean isVpnExtCall);
+    void RegisterVpnEvent([in] IVpnEventCallback callbackparam);
+    void UnregisterVpnEvent([in] IVpnEventCallback callbackparam);
+    void CreateVpnConnection([in] boolean isVpnExtCall);
+    void FactoryResetVpn();
+    void GetSelfAppName([out] String selfAppName, [out] String selfBundleName);
+    void StartVpnExtensionAbility([in] Want want);
+    void StopVpnExtensionAbility([in] Want want);
+    void RequestVpnPermission([in] int uid, [in] String bundleName, [in] String abilityName, [out] boolean isAuthorized);
+    [macrodef SUPPORT_SYSVPN] void GetVpnCertData([in] int certType, [out] byte[] certData);
+    [macrodef SUPPORT_SYSVPN] void SetUpSysVpn([in] sptr<SysVpnConfig> config, [in] boolean isVpnExtCall);
+    [macrodef SUPPORT_SYSVPN] void AddSysVpnConfig([in] sptr<SysVpnConfig> config);
+    [macrodef SUPPORT_SYSVPN] void DeleteSysVpnConfig([in] String vpnId);
+    [macrodef SUPPORT_SYSVPN] void GetConnectedVpnAppInfo([out]List<String> bundleNameList);
+    [macrodef SUPPORT_SYSVPN] void GetSysVpnConfigList([out] List<sptr<SysVpnConfig>> vpnList);
+    [macrodef SUPPORT_SYSVPN] void GetSysVpnConfig([out] sptr<SysVpnConfig> config, [in] String vpnId);
+    [macrodef SUPPORT_SYSVPN] void GetConnectedSysVpnConfig([out] sptr<SysVpnConfig> config);
+    [macrodef SUPPORT_SYSVPN] void NotifyConnectStage([in] String stage, [in] int resultIpc);
+    [macrodef SUPPORT_SYSVPN] void GetSysVpnCertUri([in] int certType, [out] String certUri);
+    [macrodef SUPPORT_SYSVPN] void DestroyVpn([in] String vpnId);
+    [macrodef SUPPORT_SYSVPN] void RegisterMultiVpnEvent([in] IVpnEventCallback callbackparam);
+    [macrodef SUPPORT_SYSVPN] void UnregisterMultiVpnEvent([in] IVpnEventCallback callbackparam);
+    [macrodef SUPPORT_SYSVPN] void GetVpnConfigToAnco([out] List<String> dnsAddresses);
+}

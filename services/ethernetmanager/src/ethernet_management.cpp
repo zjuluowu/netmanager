@@ -1,0 +1,1078 @@
+/*
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "ethernet_management.h"
+
+#include <fcntl.h>
+#include <fstream>
+#include <regex>
+#include <thread>
+#include <pthread.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <vector>
+
+#include "net_manager_constants.h"
+#include "netmanager_base_common_utils.h"
+#include "netmgr_ext_log_wrapper.h"
+#include "netsys_controller.h"
+#include "parameters.h"
+#include "securec.h"
+
+namespace OHOS {
+namespace NetManagerStandard {
+constexpr const char IFACE_MATCH[] = "(eth|usb)\\d";
+constexpr const char *IFACE_LINK_UP = "up";
+constexpr const char *IFACE_RUNNING = "running";
+constexpr const char *SYS_CLASS_NET_PATH = "/sys/class/net/";
+static constexpr const char *MDIO_BUS_DEV_INFO_PATH = "/sys/bus/mdio_bus/devices/bf800000.xge-0:01/dev_info";
+static constexpr const char *PCI_IDS_FILE_PATH = "/vendor/etc/pci/pci.ids";
+static constexpr const char *PCI_ID_PREFIX = "0x";
+constexpr const char *ITEM_DEVICE = "/device";
+static constexpr const char *ITEM_VENDOR = "/vendor";
+static constexpr const char *ITEM_PCI = "pci";
+constexpr const char *ITEM_USB = "usb";
+constexpr const char *ITEM_DEVICE_NAME = "/product";
+constexpr const char *ITEM_SUPPLIER_ID = "/idVendor";
+constexpr const char *ITEM_SUPPLIER_NAME = "/manufacturer";
+constexpr const char *ITEM_MAXIMUM_RATE = "/speed";
+constexpr const char *ITEM_UNIT_MBS = " Mb/s";
+static constexpr const char *ITEM_COMMA = ",";
+static constexpr uint32_t INDEX_ZERO = 0;
+static constexpr const uint32_t PCI_ID_LEN = 4;
+constexpr int SLEEP_TIME_S = 2;
+constexpr uint32_t INDEX_ONE = 1;
+static constexpr uint32_t PCI_IDPREFIX_LEN = 2;
+constexpr uint32_t INDEX_TWO = 2;
+constexpr uint32_t INDEX_THREE = 3;
+constexpr uint32_t INDEX_FOUR = 4;
+constexpr uint32_t INDEX_FIVE = 5;
+constexpr uint32_t BUFFER_SIZE = 64;
+constexpr const char *SYS_PARAM_PERSIST_EDM_SET_ETHERNET_IP_DISABLE = "persist.edm.set_ethernet_ip_disable";
+const std::regex IFACE_MATCH_PATTERM(IFACE_MATCH);
+int32_t EthernetManagement::EhternetDhcpNotifyCallback::OnDhcpSuccess(EthernetDhcpCallback::DhcpResult &dhcpResult)
+{
+    auto sp = ethernetManagement_.lock();
+    if (sp != nullptr) {
+        sp->UpdateDevInterfaceLinkInfo(dhcpResult);
+    }
+    return 0;
+}
+
+int32_t EthernetManagement::DevInterfaceStateCallback::OnInterfaceAddressUpdated(const std::string &,
+                                                                                 const std::string &, int, int)
+{
+    return 0;
+}
+
+int32_t EthernetManagement::DevInterfaceStateCallback::OnInterfaceAddressRemoved(const std::string &,
+                                                                                 const std::string &, int, int)
+{
+    return 0;
+}
+
+int32_t EthernetManagement::DevInterfaceStateCallback::OnInterfaceAdded(const std::string &iface)
+{
+    auto sp = ethernetManagement_.lock();
+    if (sp == nullptr) {
+        return 0;
+    }
+
+    if (std::regex_search(iface, IFACE_MATCH_PATTERM)) {
+        sp->DevInterfaceAdd(iface);
+#ifdef NETMANAGER_EXT_ETHERNET_ENABLE_DISABLE
+        if (!sp->IsEthernetEnabled()) {
+            NETMGR_EXT_LOG_I("Ethernet disabled, ignore interface add: %{public}s", iface.c_str());
+            if (NetsysController::GetInstance().SetInterfaceDown(iface) != ERR_NONE) {
+                NETMGR_EXT_LOG_E("Iface[%{public}s] set down fail!", iface.c_str());
+            }
+            return 0;
+        }
+#endif
+        if (NetsysController::GetInstance().SetInterfaceUp(iface) != ERR_NONE) {
+            NETMGR_EXT_LOG_E("Iface[%{public}s] added set up fail!", iface.c_str());
+        }
+    }
+    return 0;
+}
+
+int32_t EthernetManagement::DevInterfaceStateCallback::OnInterfaceRemoved(const std::string &iface)
+{
+    auto sp = ethernetManagement_.lock();
+    if (sp == nullptr) {
+        return 0;
+    }
+
+    if (std::regex_search(iface, IFACE_MATCH_PATTERM)) {
+        sp->DevInterfaceRemove(iface);
+        if (NetsysController::GetInstance().SetInterfaceDown(iface) != ERR_NONE) {
+            NETMGR_EXT_LOG_E("Iface[%{public}s] added set down fail!", iface.c_str());
+        }
+    }
+    return 0;
+}
+
+int32_t EthernetManagement::DevInterfaceStateCallback::OnInterfaceChanged(const std::string &, bool)
+{
+    return 0;
+}
+
+int32_t EthernetManagement::DevInterfaceStateCallback::OnInterfaceLinkStateChanged(const std::string &ifName, bool up)
+{
+    auto sp = ethernetManagement_.lock();
+    if (sp == nullptr) {
+        return 0;
+    }
+    auto startTime = std::chrono::steady_clock::now();
+    if (std::regex_search(ifName, IFACE_MATCH_PATTERM)) {
+        sp->UpdateInterfaceState(ifName, up);
+    }
+    auto endTime = std::chrono::steady_clock::now();
+    auto durationNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
+    NETMGR_EXT_LOG_I("OnInterfaceLinkStateChanged iface[%{public}s] up[%{public}d], cost=%{public}lld",
+        ifName.c_str(), up, durationNs.count());
+    return 0;
+}
+
+int32_t EthernetManagement::DevInterfaceStateCallback::OnRouteChanged(bool, const std::string &, const std::string &,
+                                                                      const std::string &)
+{
+    return 0;
+}
+
+int32_t EthernetManagement::DevInterfaceStateCallback::OnDhcpSuccess(NetsysControllerCallback::DhcpResult &dhcpResult)
+{
+    return 0;
+}
+
+int32_t EthernetManagement::DevInterfaceStateCallback::OnBandwidthReachedLimit(const std::string &limitName,
+                                                                               const std::string &iface)
+{
+    return 0;
+}
+
+EthernetManagement::EthernetManagement()
+{
+    ethDhcpController_ = std::make_unique<EthernetDhcpController>();
+    ethConfiguration_ = std::make_unique<EthernetConfiguration>();
+    ethConfiguration_->ReadSystemConfiguration(devCaps_, devCfgs_);
+    ethLanManageMent_ = std::make_unique<EthernetLanManagement>();
+}
+
+EthernetManagement::~EthernetManagement() = default;
+
+void EthernetManagement::UpdateInterfaceState(const std::string &dev, bool up)
+{
+    NETMGR_EXT_LOG_D("EthernetManagement UpdateInterfaceState dev[%{public}s] up[%{public}d]", dev.c_str(), up);
+    sptr<DevInterfaceState> devState = nullptr;
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    auto fit = devs_.find(dev);
+    if (fit == devs_.end()) {
+        return;
+    }
+    devState = fit->second;
+    lock.unlock();
+    if (devState == nullptr) {
+        NETMGR_EXT_LOG_E("devState is nullptr");
+        return;
+    }
+    devState->SetLinkUp(up);
+    IPSetMode mode = devState->GetIPSetMode();
+    bool dhcpReqState = devState->GetDhcpReqState();
+    NETMGR_EXT_LOG_D("EthernetManagement UpdateInterfaceState mode[%{public}d] dhcpReqState[%{public}d]",
+                     static_cast<int32_t>(mode), dhcpReqState);
+    if (up) {
+        if (!devState->IsLanIface()) {
+            devState->RemoteUpdateNetSupplierInfo();
+        }
+        if ((mode == DHCP || mode == LAN_DHCP) && !dhcpReqState) {
+            StartDhcpClient(dev, devState);
+        } else {
+            if (devState->IsLanIface()) {
+                ethLanManageMent_->UpdateLanLinkInfo(devState);
+            } else {
+                devState->RemoteUpdateNetLinkInfo();
+            }
+        }
+    } else {
+        if ((mode == DHCP || mode == LAN_DHCP) && dhcpReqState) {
+            StopDhcpClient(dev, devState);
+        }
+        if (devState->IsLanIface()) {
+            ethLanManageMent_->ReleaseLanNetLink(devState);
+        } else {
+            devState->RemoteUpdateNetSupplierInfo();
+        }
+        std::unique_lock<std::shared_mutex> lock2(mutex_);
+        netLinkConfigs_.erase(dev);
+        configsV4_.erase(dev);
+        configsV6_.erase(dev);
+    }
+}
+
+int32_t EthernetManagement::GetMacAddress(std::vector<MacAddressInfo> &macAddrList)
+{
+    std::vector<std::string> ifaceLists = NetsysController::GetInstance().InterfaceGetList();
+    if (ifaceLists.empty()) {
+        NETMGR_EXT_LOG_E("EthernetManagement iface list is empty");
+        return ETHERNET_ERR_DEVICE_INFORMATION_NOT_EXIST;
+    }
+    for (const auto &iface : ifaceLists) {
+        if (std::regex_search(iface, IFACE_MATCH_PATTERM)) {
+            MacAddressInfo macAddressInfo;
+            auto spMacAddr = GetMacAddr(iface);
+            if (spMacAddr.c_str() == nullptr) {
+                NETMGR_EXT_LOG_E("The iface[%{public}s] device does not find MAC address", iface.c_str());
+                continue;
+            }
+            macAddressInfo.iface_ = iface;
+            macAddressInfo.macAddress_ = spMacAddr;
+            macAddrList.push_back(macAddressInfo);
+        }
+    }
+    if (macAddrList.size() == 0) {
+        NETMGR_EXT_LOG_E("EthernetManagement mac address list is empty");
+        return ETHERNET_ERR_DEVICE_INFORMATION_NOT_EXIST;
+    }
+    return NETMANAGER_EXT_SUCCESS;
+}
+
+std::string EthernetManagement::GetMacAddr(const std::string &iface)
+{
+    NETMGR_EXT_LOG_D("GetMacAddr when iface is [%{public}s]", iface.c_str());
+    int fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+    if (fd < 0) {
+        NETMGR_EXT_LOG_E("create unix SOCK_STREAM socket error: %{public}d", errno);
+        return "";
+    }
+    std::string macAddr;
+    struct ifreq ifr = {};
+    strncpy_s(ifr.ifr_name, IFNAMSIZ, iface.c_str(), iface.length());
+    
+    if (ioctl(fd, SIOCGIFHWADDR, &ifr) != -1) {
+        macAddr = HwAddrToStr(ifr.ifr_hwaddr.sa_data);
+    }
+    close(fd);
+    return macAddr;
+}
+
+std::string EthernetManagement::HwAddrToStr(char *hwaddr)
+{
+    char buf[BUFFER_SIZE] = {'\0'};
+    if (hwaddr == nullptr) {
+        NETMGR_EXT_LOG_E("hwaddr is nullptr");
+        return "";
+    }
+    errno_t result =
+        sprintf_s(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x", hwaddr[0], hwaddr[INDEX_ONE],
+            hwaddr[INDEX_TWO], hwaddr[INDEX_THREE], hwaddr[INDEX_FOUR],
+            hwaddr[INDEX_FIVE]);
+    if (result < 0) {
+        NETMGR_EXT_LOG_E("[hwAddrToStr] result error : [%{public}d]", result);
+        return "";
+    }
+    return std::string(buf);
+}
+
+int32_t EthernetManagement::UpdateDevInterfaceCfg(const std::string &iface, sptr<InterfaceConfiguration> cfg)
+{
+    if (cfg == nullptr) {
+        NETMGR_EXT_LOG_E("cfg is nullptr");
+        return NETMANAGER_EXT_ERR_LOCAL_PTR_NULL;
+    }
+    sptr<DevInterfaceState> devState = nullptr;
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    auto fit = devs_.find(iface);
+    if (fit == devs_.end() || fit->second == nullptr) {
+        NETMGR_EXT_LOG_E("The iface[%{public}s] device or device information does not exist", iface.c_str());
+        return ETHERNET_ERR_DEVICE_INFORMATION_NOT_EXIST;
+    }
+    devState = fit->second;
+    lock.unlock();
+    if (!devState->GetLinkUp()) {
+        NETMGR_EXT_LOG_E("The iface[%{public}s] device is unlink", iface.c_str());
+        return ETHERNET_ERR_DEVICE_NOT_LINK;
+    }
+    if (!ModeInputCheck(devState->GetIfcfg()->mode_, cfg->mode_)) {
+        NETMGR_EXT_LOG_E("The iface[%{public}s] device can not exchange between WAN and LAN", iface.c_str());
+        return NETMANAGER_ERR_INVALID_PARAMETER;
+    }
+    if (!CanModifyCheck(devState->GetIfcfg()->mode_, cfg->mode_)) {
+        NETMGR_EXT_LOG_E("The iface[%{public}s] device is not allowed to update", iface.c_str());
+        return NETMANAGER_ERR_PERMISSION_DENIED;
+    }
+    if (!ethConfiguration_->WriteUserConfiguration(iface, cfg)) {
+        NETMGR_EXT_LOG_E("EthernetManagement write user configurations error!");
+        return ETHERNET_ERR_USER_CONIFGURATION_WRITE_FAIL;
+    }
+    if (devState->GetIfcfg()->mode_ != cfg->mode_) {
+        ProcessChangeMode(iface, devState, cfg);
+    } else if (cfg->mode_ == DHCP) {
+        devState->UpdateNetHttpProxy(cfg->httpProxy_);
+    }
+    if (devState->IsLanIface()) {
+        ethLanManageMent_->GetOldLinkInfo(devState);
+        devState->SetLancfg(cfg);
+        ethLanManageMent_->UpdateLanLinkInfo(devState);
+    } else {
+        devState->SetIfcfg(cfg);
+    }
+    std::unique_lock<std::shared_mutex> lock2(mutex_);
+    devCfgs_[iface] = cfg;
+    return NETMANAGER_EXT_SUCCESS;
+}
+
+bool EthernetManagement::CanModifyCheck(IPSetMode origin, IPSetMode input)
+{
+    std::string param(SYS_PARAM_PERSIST_EDM_SET_ETHERNET_IP_DISABLE);
+    bool isSetEthernetIpDisabled = OHOS::system::GetBoolParameter(param, false);
+    NETMGR_EXT_LOG_D("Set ethernet ip is disabled: %{public}d, origin mode: %{public}d, input mode: %{public}d",
+        isSetEthernetIpDisabled, origin, input);
+    if (isSetEthernetIpDisabled && origin == STATIC && (input == DHCP || input == STATIC)) {
+        return false;
+    }
+    return true;
+}
+
+void EthernetManagement::ProcessChangeMode(
+    const std::string &iface, sptr<DevInterfaceState> devState, sptr<InterfaceConfiguration> cfg)
+{
+    if (cfg->mode_ == DHCP || cfg->mode_ == LAN_DHCP) {
+        StartDhcpClient(iface, devState);
+    } else {
+        StopDhcpClient(iface, devState);
+        std::unique_lock<std::shared_mutex> lock(mutex_);
+        netLinkConfigs_.erase(iface);
+        configsV4_.erase(iface);
+        configsV6_.erase(iface);
+    }
+}
+
+int32_t EthernetManagement::UpdateDevInterfaceLinkInfo(EthernetDhcpCallback::DhcpResult &dhcpResult)
+{
+    NETMGR_EXT_LOG_D("EthernetManagement::UpdateDevInterfaceLinkInfo");
+    std::unique_lock<std::shared_mutex> locker(mutex_);
+    auto fit = devs_.find(dhcpResult.iface);
+    if (fit == devs_.end() || fit->second == nullptr) {
+        NETMGR_EXT_LOG_E("The iface[%{public}s] device or device information does not exist", dhcpResult.iface.c_str());
+        return ETHERNET_ERR_DEVICE_INFORMATION_NOT_EXIST;
+    }
+    if (!fit->second->GetLinkUp()) {
+        NETMGR_EXT_LOG_E("The iface[%{public}s] The device is not turned on", dhcpResult.iface.c_str());
+        return ETHERNET_ERR_DEVICE_NOT_LINK;
+    }
+
+    IPSetMode mode = fit->second->GetIPSetMode();
+    if (mode == IPSetMode::STATIC || mode == IPSetMode::LAN_STATIC) {
+        NETMGR_EXT_LOG_E("The iface[%{public}s] set mode is STATIC now", dhcpResult.iface.c_str());
+        return ETHERNET_ERR_DEVICE_NOT_LINK;
+    }
+
+    StaticConfiguration& config = netLinkConfigs_[dhcpResult.iface];
+    if (UpdataEthernetConfig(dhcpResult, config) != 0) {
+        NETMGR_EXT_LOG_E("EthernetManagement dhcp updata to configurations error!");
+        return ETHERNET_ERR_CONVERT_CONFIGURATINO_FAIL;
+    }
+
+    if (fit->second->IsLanIface()) {
+        ethLanManageMent_->GetOldLinkInfo(fit->second);
+        fit->second->UpdateLanLinkInfo(config);
+        ethLanManageMent_->UpdateLanLinkInfo(fit->second);
+    } else {
+        fit->second->UpdateLinkInfo(config);
+        fit->second->RemoteUpdateNetLinkInfo();
+    }
+    return NETMANAGER_EXT_SUCCESS;
+}
+
+int32_t EthernetManagement::UpdataEthernetConfig(EthernetDhcpCallback::DhcpResult &dhcpResult,
+    StaticConfiguration &config)
+{
+    if (dhcpResult.ipAddr.empty()) {
+        NETMGR_EXT_LOG_E("DhcpResult ip addr is empty");
+        return ETHERNET_ERR_CONVERT_CONFIGURATINO_FAIL;
+    }
+    if (CommonUtils::GetAddrFamily(dhcpResult.ipAddr) == AF_INET) {
+        ClearEthernetConfig(configsV4_[dhcpResult.iface]);
+        if (!ethConfiguration_->ConvertToConfiguration(dhcpResult, configsV4_[dhcpResult.iface])) {
+            NETMGR_EXT_LOG_E("UpdataEthernetConfig dhcp convert to configurations v4 error!");
+            return ETHERNET_ERR_CONVERT_CONFIGURATINO_FAIL;
+        }
+    } else if (CommonUtils::GetAddrFamily(dhcpResult.ipAddr) == AF_INET6) {
+        ClearEthernetConfig(configsV6_[dhcpResult.iface]);
+        if (!ethConfiguration_->ConvertToConfiguration(dhcpResult, configsV6_[dhcpResult.iface])) {
+            NETMGR_EXT_LOG_E("UpdataEthernetConfig dhcp convert to configurations v6 error!");
+            return ETHERNET_ERR_CONVERT_CONFIGURATINO_FAIL;
+        }
+    }
+    ClearEthernetConfig(config);
+    MergeEthernetConfig(config, configsV4_[dhcpResult.iface], configsV6_[dhcpResult.iface]);
+    return NETMANAGER_EXT_SUCCESS;
+}
+
+void EthernetManagement::ClearEthernetConfig(StaticConfiguration &config)
+{
+    if (config.ipAddrList_.empty()) {
+        NETMGR_EXT_LOG_E("config is empty");
+        return;
+    }
+    config.ipAddrList_.clear();
+    config.routeList_.clear();
+    config.gatewayList_.clear();
+    config.netMaskList_.clear();
+    config.dnsServers_.clear();
+    config.domain_.clear();
+}
+
+void EthernetManagement::MergeEthernetConfig(StaticConfiguration &config, StaticConfiguration &configV4,
+    StaticConfiguration &configV6)
+{
+    config.ipAddrList_.insert(config.ipAddrList_.end(), configV4.ipAddrList_.begin(), configV4.ipAddrList_.end());
+    config.ipAddrList_.insert(config.ipAddrList_.end(), configV6.ipAddrList_.begin(), configV6.ipAddrList_.end());
+    config.routeList_.insert(config.routeList_.end(), configV4.routeList_.begin(), configV4.routeList_.end());
+    config.routeList_.insert(config.routeList_.end(), configV6.routeList_.begin(), configV6.routeList_.end());
+    config.gatewayList_.insert(config.gatewayList_.end(), configV4.gatewayList_.begin(), configV4.gatewayList_.end());
+    config.gatewayList_.insert(config.gatewayList_.end(), configV6.gatewayList_.begin(), configV6.gatewayList_.end());
+    config.netMaskList_.insert(config.netMaskList_.end(), configV4.netMaskList_.begin(), configV4.netMaskList_.end());
+    config.netMaskList_.insert(config.netMaskList_.end(), configV6.netMaskList_.begin(), configV6.netMaskList_.end());
+    config.dnsServers_.insert(config.dnsServers_.end(), configV4.dnsServers_.begin(), configV4.dnsServers_.end());
+    config.dnsServers_.insert(config.dnsServers_.end(), configV6.dnsServers_.begin(), configV6.dnsServers_.end());
+}
+
+int32_t EthernetManagement::GetDevInterfaceCfg(const std::string &iface, sptr<InterfaceConfiguration> &ifaceConfig)
+{
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    auto fit = devs_.find(iface);
+    if (fit == devs_.end() || fit->second == nullptr) {
+        NETMGR_EXT_LOG_E("The iface[%{public}s] device does not exist", iface.c_str());
+        return ETHERNET_ERR_DEVICE_INFORMATION_NOT_EXIST;
+    }
+    if (!fit->second->GetLinkUp()) {
+        ifaceConfig = fit->second->GetIfcfg();
+        return NETMANAGER_EXT_SUCCESS;
+    }
+    NetLinkInfo netLinkInfo;
+    if (!fit->second->GetLinkInfo(netLinkInfo)) {
+        return ETHERNET_ERR_DEVICE_INFORMATION_NOT_EXIST;
+    }
+    auto temp = ethConfiguration_->MakeInterfaceConfiguration(fit->second->GetIfcfg(), netLinkInfo);
+    if (temp == nullptr) {
+        return ETHERNET_ERR_DEVICE_INFORMATION_NOT_EXIST;
+    }
+    ifaceConfig = temp;
+    return NETMANAGER_EXT_SUCCESS;
+}
+
+int32_t EthernetManagement::IsIfaceActive(const std::string &iface, int32_t &activeStatus)
+{
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    auto fit = devs_.find(iface);
+    if (fit == devs_.end() || fit->second == nullptr) {
+        NETMGR_EXT_LOG_E("The iface[%{public}s] device does not exist", iface.c_str());
+        return ETHERNET_ERR_DEVICE_INFORMATION_NOT_EXIST;
+    }
+    activeStatus = static_cast<int32_t>(fit->second->GetLinkUp());
+    return NETMANAGER_EXT_SUCCESS;
+}
+
+int32_t EthernetManagement::GetAllActiveIfaces(std::vector<std::string> &activeIfaces)
+{
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    for (auto it = devs_.begin(); it != devs_.end(); ++it) {
+        if (it->second->GetLinkUp()) {
+            activeIfaces.push_back(it->first);
+        }
+    }
+    return NETMANAGER_EXT_SUCCESS;
+}
+
+#ifdef FEATURE_GET_IFACE_SUPPLIER_ID
+int32_t EthernetManagement::GetIfaceSupplierId(const std::string &iface, uint32_t &supplierId)
+{
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    auto dev = devs_.find(iface);
+    if (dev == devs_.end() || dev->second == nullptr) {
+        NETMGR_EXT_LOG_E("The iface[%{public}s] device does not exist", iface.c_str());
+        return ETHERNET_ERR_DEVICE_INFORMATION_NOT_EXIST;
+    }
+
+    supplierId = dev->second->GetSupplierId();
+    NETMGR_EXT_LOG_I("get supplier id is %{public}u\n", supplierId);
+    return NETMANAGER_EXT_SUCCESS;
+}
+#endif // FEATURE_GET_IFACE_SUPPLIER_ID
+
+int32_t EthernetManagement::ResetFactory()
+{
+    if (!ethConfiguration_->ClearAllUserConfiguration()) {
+        NETMGR_EXT_LOG_E("Failed to ResetFactory!");
+        return ETHERNET_ERR_USER_CONIFGURATION_CLEAR_FAIL;
+    }
+    NETMGR_EXT_LOG_I("Success to ResetFactory!");
+    return NETMANAGER_EXT_SUCCESS;
+}
+
+void EthernetManagement::Init()
+{
+    static const unsigned int SLEEP_TIME = 4;
+    std::this_thread::sleep_for(std::chrono::seconds(SLEEP_TIME));
+
+#ifdef NETMANAGER_EXT_ETHERNET_ENABLE_DISABLE
+    InitEthernetEnabledState();
+#endif
+    RegisterCallbacks();
+    if (!InitDeviceInterfaces()) {
+        return;
+    }
+
+#ifdef NETMANAGER_EXT_ETHERNET_ENABLE_DISABLE
+    if (!ethernetEnabled_) {
+        NETMGR_EXT_LOG_I("Ethernet is disabled, setting all interfaces down");
+        DisableAllInterfaces();
+        return;
+    }
+#endif
+
+    StartDeviceUpThread();
+}
+
+#ifdef NETMANAGER_EXT_ETHERNET_ENABLE_DISABLE
+void EthernetManagement::InitEthernetEnabledState()
+{
+    std::string value;
+    int32_t ret = NetDataShareHelperUtilsIface::Query(ETHERNET_ENABLED_URI, KEY_ETHERNET_ENABLED, value);
+    if (ret == NETMANAGER_EXT_SUCCESS) {
+        ethernetEnabled_ = (value == "1" || value == "true");
+        NETMGR_EXT_LOG_I("EthernetManagement Init: ethernet enabled state = %{public}d", ethernetEnabled_);
+    } else {
+        NETMGR_EXT_LOG_W("Failed to query settingsdata, using default enabled state");
+        ethernetEnabled_ = true;
+    }
+}
+#endif
+
+void EthernetManagement::RegisterCallbacks()
+{
+    if (ethDevInterfaceStateCallback_ == nullptr) {
+        ethDevInterfaceStateCallback_ =
+            sptr<DevInterfaceStateCallback>::MakeSptr(std::weak_ptr<EthernetManagement>(shared_from_this()));
+    }
+    ethDhcpNotifyCallback_ =
+        sptr<EhternetDhcpNotifyCallback>::MakeSptr(std::weak_ptr<EthernetManagement>(shared_from_this()));
+    if (ethDhcpController_ != nullptr) {
+        ethDhcpController_->RegisterDhcpCallback(ethDhcpNotifyCallback_);
+    }
+    NetsysController::GetInstance().RegisterCallback(ethDevInterfaceStateCallback_);
+}
+
+bool EthernetManagement::InitDeviceInterfaces()
+{
+    std::regex re(IFACE_MATCH);
+    std::vector<std::string> ifaces = NetsysController::GetInstance().InterfaceGetList();
+    if (ifaces.empty()) {
+        NETMGR_EXT_LOG_E("EthernetManagement link list is empty");
+        return false;
+    }
+    NETMGR_EXT_LOG_D("EthernetManagement devs size[%{public}zd]", ifaces.size());
+    if (!ethConfiguration_->ReadUserConfiguration(devCfgs_)) {
+        NETMGR_EXT_LOG_E("EthernetManagement read user configurations error!");
+        return false;
+    }
+    for (const auto &devName : ifaces) {
+        NETMGR_EXT_LOG_D("EthernetManagement devName[%{public}s]", devName.c_str());
+        if (!std::regex_search(devName, IFACE_MATCH_PATTERM)) {
+            continue;
+        }
+        DevInterfaceAdd(devName);
+    }
+    return true;
+}
+
+void EthernetManagement::StartDeviceUpThread()
+{
+    std::weak_ptr<EthernetManagement> wp = shared_from_this();
+    std::thread t([wp]() {
+        auto sp = wp.lock();
+        if (sp != nullptr) {
+            sp->StartSetDevUpThd();
+        }
+    });
+    pthread_setname_np(t.native_handle(), "SetDevUpThd");
+    t.detach();
+}
+
+void EthernetManagement::StartSetDevUpThd()
+{
+    NETMGR_EXT_LOG_D("EthernetManagement StartSetDevUpThd in.");
+    std::map<std::string, sptr<DevInterfaceState>> tempDevMap;
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    tempDevMap = devs_;
+    lock.unlock();
+
+    for (auto &dev : tempDevMap) {
+        std::string devName = dev.first;
+        if (IsIfaceLinkUp(devName)) {
+            continue;
+        }
+        while (true) {
+            if (NetsysController::GetInstance().SetInterfaceUp(devName) != ERR_NONE) {
+                sleep(SLEEP_TIME_S);
+                continue;
+            }
+            break;
+        }
+    }
+}
+
+bool EthernetManagement::IsIfaceLinkUp(const std::string &iface)
+{
+    OHOS::nmd::InterfaceConfigurationParcel config;
+    config.ifName = iface;
+    if (NetsysController::GetInstance().GetInterfaceConfig(config) != ERR_NONE) {
+        return false;
+    }
+    if (std::find(config.flags.begin(), config.flags.end(), IFACE_LINK_UP) == config.flags.end() ||
+        std::find(config.flags.begin(), config.flags.end(), IFACE_RUNNING) == config.flags.end()) {
+        return false;
+    }
+    UpdateInterfaceState(iface, true);
+    return true;
+}
+
+void EthernetManagement::StartDhcpClient(const std::string &dev, sptr<DevInterfaceState> &devState)
+{
+    NETMGR_EXT_LOG_D("EthernetManagement StartDhcpClient[%{public}s]", dev.c_str());
+    ethDhcpController_->StartClient(dev, true);
+    devState->SetDhcpReqState(true);
+}
+
+void EthernetManagement::StopDhcpClient(const std::string &dev, sptr<DevInterfaceState> &devState)
+{
+    NETMGR_EXT_LOG_D("EthernetManagement StopDhcpClient[%{public}s]", dev.c_str());
+    ethDhcpController_->StopClient(dev, true);
+    devState->SetDhcpReqState(false);
+}
+
+void EthernetManagement::DevInterfaceAdd(const std::string &devName)
+{
+    NETMGR_EXT_LOG_D("Interface name:[%{public}s] add.", devName.c_str());
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    auto fitDev = devs_.find(devName);
+    if (fitDev != devs_.end()) {
+        NETMGR_EXT_LOG_E("Interface name:[%{public}s] has added.", devName.c_str());
+        return;
+    }
+    sptr<DevInterfaceState> devState = new (std::nothrow) DevInterfaceState();
+    if (devState == nullptr) {
+        NETMGR_EXT_LOG_E("devState is nullptr");
+        return;
+    }
+    ethConfiguration_->ReadSystemConfiguration(devCaps_, devCfgs_);
+    devs_.insert(std::make_pair(devName, devState));
+    devState->SetDevName(devName);
+    auto fitCfg = devCfgs_.find(devName);
+    if (fitCfg != devCfgs_.end()) {
+        if (fitCfg->second->mode_ == LAN_STATIC || fitCfg->second->mode_ == LAN_DHCP) {
+            NETMGR_EXT_LOG_D("Lan Interface name:[%{public}s] add, mode [%{public}d]",
+                             devName.c_str(), fitCfg->second->mode_);
+            devState->SetLancfg(fitCfg->second);
+            ethLanManageMent_->UpdateLanLinkInfo(devState);
+            return;
+        }
+        devState->RemoteRegisterNetSupplier();
+        devState->SetIfcfg(fitCfg->second);
+    } else {
+        sptr<InterfaceConfiguration> ifCfg = new (std::nothrow) InterfaceConfiguration();
+        if (ifCfg == nullptr) {
+            NETMGR_EXT_LOG_E("ifCfg is nullptr");
+            return;
+        }
+        ifCfg->mode_ = DHCP;
+        devState->RemoteRegisterNetSupplier();
+        devState->SetIfcfg(ifCfg);
+    }
+    auto fitCap = devCaps_.find(devName);
+    if (fitCap != devCaps_.end()) {
+        devState->SetNetCaps(fitCap->second);
+    }
+}
+
+void EthernetManagement::DevInterfaceRemove(const std::string &devName)
+{
+    NETMGR_EXT_LOG_D("Interface name:[%{public}s] remove.", devName.c_str());
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    auto fitDev = devs_.find(devName);
+    if (fitDev != devs_.end()) {
+        if (fitDev->second != nullptr) {
+            fitDev->second->RemoteUnregisterNetSupplier();
+        }
+        devs_.erase(fitDev);
+    }
+}
+
+void EthernetManagement::GetDumpInfo(std::string &info)
+{
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    std::for_each(devs_.begin(), devs_.end(), [&info](const auto &dev) { dev.second->GetDumpInfo(info); });
+}
+
+bool EthernetManagement::ModeInputCheck(IPSetMode origin, IPSetMode input)
+{
+    if (origin == STATIC || origin == DHCP) {
+        if (input == LAN_STATIC || input == LAN_DHCP) {
+            return false;
+        }
+    } else if (origin == LAN_STATIC || origin == LAN_DHCP) {
+        if (input == STATIC || input == DHCP) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool EthernetManagement::GetSysNodeValue(const std::string &nodePath, std::string &nodeVal)
+{
+    std::ifstream infile;
+    std::string strLine;
+    std::error_code ec;
+
+    std::filesystem::path filePath(nodePath);
+    if (!std::filesystem::exists(filePath)) {
+        NETMGR_EXT_LOG_E("GetSysNodeValue nodePath not exist");
+        return false;
+    }
+    auto truePath = std::filesystem::canonical(filePath, ec);
+    if (ec) {
+        NETMGR_EXT_LOG_E("GetSysNodeValue canonical failed:%{public}s", ec.message().c_str());
+        return false;
+    }
+    std::string truePathStr = truePath.string();
+    infile.open(truePathStr);
+    if (!infile.is_open()) {
+        NETMGR_EXT_LOG_E("GetSysNodeValue open failed");
+        return false;
+    }
+    while (getline(infile, strLine)) {
+        nodeVal.append(strLine);
+    }
+    infile.close();
+    return true;
+}
+ 
+void EthernetManagement::GetUsbEthDeviceInfo(const std::string &iface, std::string &nodePath,
+    std::vector<EthernetDeviceInfo> &deviceInfoList)
+{
+    size_t pos = nodePath.find_last_of('/');
+    if (pos != std::string::npos) {
+        nodePath.erase(pos);
+    }
+    EthernetDeviceInfo tempDeviceInfo;
+    tempDeviceInfo.ifaceName_ = iface;
+    tempDeviceInfo.connectionMode_ = EXTERNAL;
+    bool ret = true;
+    ret &= GetSysNodeValue(nodePath + ITEM_DEVICE_NAME, tempDeviceInfo.deviceName_);
+    ret &= GetSysNodeValue(nodePath + ITEM_SUPPLIER_NAME, tempDeviceInfo.supplierName_);
+    ret &= GetSysNodeValue(nodePath + ITEM_SUPPLIER_ID, tempDeviceInfo.supplierId_);
+    ret &= GetSysNodeValue(nodePath + ITEM_MAXIMUM_RATE, tempDeviceInfo.maximumRate_);
+    tempDeviceInfo.productName_ = tempDeviceInfo.deviceName_;
+    tempDeviceInfo.maximumRate_ += ITEM_UNIT_MBS;
+    if (ret) {
+        deviceInfoList.push_back(tempDeviceInfo);
+    }
+}
+
+void EthernetManagement::PciIdsGetName(std::string &name, std::string &line, size_t idLen)
+{
+    name = line.substr(idLen);
+    size_t start = name.find_first_not_of(" \t");
+    if (start != std::string::npos) {
+        name = name.substr(start);
+    }
+}
+
+bool EthernetManagement::QueryPciIdsFile(const std::string &vendorHex, const std::string &deviceHex,
+    std::string &supplierName, std::string &deviceName)
+{
+    std::ifstream infile(PCI_IDS_FILE_PATH);
+    if (!infile.is_open()) {
+        return false;
+    }
+    // LCOV_EXCL_START
+    std::string line;
+    bool vendorFound = false;
+    while (getline(infile, line)) {
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+        if (line[0] != '\t') {
+            if (vendorFound) {
+                break;
+            }
+            size_t idEnd = line.find_first_of(" \t");
+            if (idEnd == std::string::npos || idEnd == 0) {
+                continue;
+            }
+            std::string curVendor = line.substr(0, idEnd);
+            if (curVendor > vendorHex) {
+                break;
+            }
+            if (curVendor == vendorHex) {
+                PciIdsGetName(supplierName, line, idEnd);
+                vendorFound = true;
+            }
+        } else if (vendorFound && line.size() > 1 && line[0] == '\t' && line[1] != '\t') {
+            std::string devLine = line.substr(1);
+            size_t idEnd = devLine.find_first_of(" \t");
+            if (idEnd == std::string::npos || idEnd == 0) {
+                continue;
+            }
+            std::string curDevice = devLine.substr(0, idEnd);
+            if (curDevice > deviceHex) {
+                break;
+            }
+            if (curDevice == deviceHex) {
+                PciIdsGetName(deviceName, devLine, idEnd);
+                infile.close();
+                return true;
+            }
+        }
+    }
+    // LCOV_EXCL_STOP
+    infile.close();
+    return false;
+}
+
+void EthernetManagement::GetPciEthDeviceInfo(const std::string &iface, std::string nodePath,
+    std::vector<EthernetDeviceInfo> &deviceInfoList)
+{
+    std::string value;
+    if (!GetSysNodeValue(nodePath, value)) {
+        return;
+    }
+    auto valVec = CommonUtils::Split(value, ITEM_COMMA);
+    if (valVec.size() != INDEX_FOUR) {
+        return;
+    }
+    EthernetDeviceInfo tempDeviceInfo;
+    tempDeviceInfo.ifaceName_ = iface;
+    tempDeviceInfo.connectionMode_ = BUILT_IN;
+    tempDeviceInfo.deviceName_ = valVec[INDEX_ZERO];
+    tempDeviceInfo.supplierId_ = valVec[INDEX_ONE];
+    tempDeviceInfo.supplierName_ = valVec[INDEX_TWO];
+    tempDeviceInfo.maximumRate_ = valVec[INDEX_THREE] + ITEM_UNIT_MBS;
+    tempDeviceInfo.productName_ = tempDeviceInfo.deviceName_;
+    for (const auto &devInfo : deviceInfoList) {
+        if (devInfo.supplierId_ == tempDeviceInfo.supplierId_) {
+            return;
+        }
+    }
+    deviceInfoList.push_back(tempDeviceInfo);
+}
+ 
+void EthernetManagement::GetPciEthDeviceInfoExt(const std::string &iface, const std::string &nodePath,
+    std::vector<EthernetDeviceInfo> &deviceInfoList)
+{
+    std::string devPath = nodePath + ITEM_DEVICE;
+    EthernetDeviceInfo tempDeviceInfo;
+    bool ret = GetSysNodeValue(devPath + ITEM_VENDOR, tempDeviceInfo.supplierId_);
+    std::string devId;
+    ret &= GetSysNodeValue(devPath + ITEM_DEVICE, devId);
+    if (tempDeviceInfo.supplierId_.size() > PCI_IDPREFIX_LEN &&
+        tempDeviceInfo.supplierId_.substr(0, PCI_IDPREFIX_LEN) == PCI_ID_PREFIX) {
+        tempDeviceInfo.supplierId_ =
+            tempDeviceInfo.supplierId_.substr(PCI_IDPREFIX_LEN, PCI_ID_LEN);
+    }
+    if (devId.size() > PCI_IDPREFIX_LEN && devId.substr(0, PCI_IDPREFIX_LEN) == PCI_ID_PREFIX) {
+        devId = devId.substr(PCI_IDPREFIX_LEN, PCI_ID_LEN);
+    }
+    for (const auto &devInfo : deviceInfoList) {
+        if (devInfo.supplierId_ == tempDeviceInfo.supplierId_) {
+            return;
+        }
+    }
+    if (!QueryPciIdsFile(tempDeviceInfo.supplierId_, devId,
+        tempDeviceInfo.supplierName_, tempDeviceInfo.deviceName_)) {
+        NETMGR_EXT_LOG_D("GetPciEthDeviceInfoExt device not in ids file");
+        return;
+    }
+    ret &= GetSysNodeValue(nodePath + ITEM_MAXIMUM_RATE, tempDeviceInfo.maximumRate_);
+    tempDeviceInfo.ifaceName_ = iface;
+    tempDeviceInfo.connectionMode_ = BUILT_IN;
+    tempDeviceInfo.maximumRate_ += ITEM_UNIT_MBS;
+    tempDeviceInfo.productName_ = tempDeviceInfo.deviceName_;
+    if (ret) {
+        deviceInfoList.push_back(tempDeviceInfo);
+    }
+}
+ 
+int32_t EthernetManagement::GetDeviceInformation(std::vector<EthernetDeviceInfo> &deviceInfoList)
+{
+    deviceInfoList.clear();
+    std::vector<std::string> ifaces;
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    for (auto it = devs_.begin(); it != devs_.end(); ++it) {
+        ifaces.emplace_back(it->first);
+    }
+    lock.unlock();
+    for (std::string &iface : ifaces) {
+        std::string netDevicePath = SYS_CLASS_NET_PATH + iface + ITEM_DEVICE;
+        std::filesystem::path filePath(netDevicePath);
+        auto truePath = std::filesystem::canonical(filePath);
+        if (!std::filesystem::exists(truePath)) {
+            NETMGR_EXT_LOG_E("GetDeviceInformation truePath %{public}s not exist", truePath.string().c_str());
+            continue;
+        }
+        std::string netDevNodePath = truePath.string();
+        if (netDevNodePath.find(ITEM_USB) != std::string::npos) {
+            GetUsbEthDeviceInfo(iface, netDevNodePath, deviceInfoList);
+        } else {
+            GetPciEthDeviceInfo(iface, MDIO_BUS_DEV_INFO_PATH, deviceInfoList);
+            if (netDevNodePath.find(ITEM_PCI) != std::string::npos) {
+                GetPciEthDeviceInfoExt(iface, SYS_CLASS_NET_PATH + iface, deviceInfoList);
+            }
+        }
+    }
+    if (deviceInfoList.size() == 0) {
+        NETMGR_EXT_LOG_E("GetDeviceInformation list empty");
+        return ETHERNET_ERR_DEVICE_INFORMATION_NOT_EXIST;
+    }
+    return NETMANAGER_EXT_SUCCESS;
+}
+
+#ifdef NETMANAGER_EXT_ETHERNET_ENABLE_DISABLE
+int32_t EthernetManagement::EnableEthernet()
+{
+    NETMGR_EXT_LOG_I("EnableEthernet start");
+    {
+        std::unique_lock<std::shared_mutex> lock(mutex_);
+
+        if (ethernetEnabled_) {
+            NETMGR_EXT_LOG_W("Ethernet is already enabled");
+            return NETMANAGER_EXT_SUCCESS;
+        }
+
+        ethernetEnabled_ = true;
+    }
+
+    int32_t ret = NetDataShareHelperUtilsIface::Update(ETHERNET_ENABLED_URI, KEY_ETHERNET_ENABLED, "1");
+    if (ret != NETMANAGER_EXT_SUCCESS) {
+        NETMGR_EXT_LOG_E("Failed to update settingsdata: %{public}d", ret);
+    }
+
+    EnableAllInterfaces();
+    ReinitializeNetwork();
+
+    NETMGR_EXT_LOG_I("EnableEthernet success");
+    return NETMANAGER_EXT_SUCCESS;
+}
+
+int32_t EthernetManagement::DisableEthernet()
+{
+    NETMGR_EXT_LOG_I("DisableEthernet start");
+    {
+        std::unique_lock<std::shared_mutex> lock(mutex_);
+
+        if (!ethernetEnabled_) {
+            NETMGR_EXT_LOG_W("Ethernet is already disabled");
+            return NETMANAGER_EXT_SUCCESS;
+        }
+
+        ethernetEnabled_ = false;
+    }
+
+    CleanupNetworkState();
+
+    int32_t ret = NetDataShareHelperUtilsIface::Update(ETHERNET_ENABLED_URI, KEY_ETHERNET_ENABLED, "0");
+    if (ret != NETMANAGER_EXT_SUCCESS) {
+        NETMGR_EXT_LOG_E("Failed to update settingsdata: %{public}d", ret);
+    }
+
+    DisableAllInterfaces();
+
+    NETMGR_EXT_LOG_I("DisableEthernet success");
+    return NETMANAGER_EXT_SUCCESS;
+}
+
+bool EthernetManagement::IsEthernetEnabled()
+{
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    return ethernetEnabled_;
+}
+
+void EthernetManagement::EnableAllInterfaces()
+{
+    NETMGR_EXT_LOG_I("EnableAllInterfaces start");
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    for (auto &[devName, devState] : devs_) {
+        (void)devState;
+        if (NetsysController::GetInstance().SetInterfaceUp(devName) != ERR_NONE) {
+            NETMGR_EXT_LOG_E("Failed to set interface up: %{public}s", devName.c_str());
+        }
+    }
+}
+
+void EthernetManagement::DisableAllInterfaces()
+{
+    NETMGR_EXT_LOG_I("DisableAllInterfaces start");
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    for (auto &[devName, devState] : devs_) {
+        (void)devState;
+        if (NetsysController::GetInstance().SetInterfaceDown(devName) != ERR_NONE) {
+            NETMGR_EXT_LOG_E("Failed to set interface down: %{public}s", devName.c_str());
+        }
+    }
+}
+
+void EthernetManagement::ReinitializeNetwork()
+{
+    NETMGR_EXT_LOG_I("ReinitializeNetwork start");
+    std::map<std::string, sptr<DevInterfaceState>> tempDevMap;
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    tempDevMap = devs_;
+    lock.unlock();
+
+    for (auto &[devName, devState] : tempDevMap) {
+        if (devState == nullptr) {
+            continue;
+        }
+        if (IsIfaceLinkUp(devName)) {
+            UpdateInterfaceState(devName, true);
+        }
+    }
+}
+
+void EthernetManagement::CleanupNetworkState()
+{
+    NETMGR_EXT_LOG_I("CleanupNetworkState start");
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    for (auto &[devName, devState] : devs_) {
+        if (devState == nullptr) {
+            continue;
+        }
+        StopDhcpClient(devName, devState);
+        if (devState->IsLanIface()) {
+            ethLanManageMent_->ReleaseLanNetLink(devState);
+        } else {
+            devState->RemoteUpdateNetSupplierInfo();
+        }
+    }
+
+    netLinkConfigs_.clear();
+    configsV4_.clear();
+    configsV6_.clear();
+}
+#endif
+} // namespace NetManagerStandard
+} // namespace OHOS

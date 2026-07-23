@@ -1,0 +1,281 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_ext/netmanager_ext_config.gni")
+
+config("net_tether_manager_config") {
+  include_dirs = [
+    "$EXT_INNERKITS_ROOT/include",
+    "$EXT_INNERKITS_ROOT/netshareclient/include",
+    "$EXT_INNERKITS_ROOT/netshareclient/include/proxy",
+    "$EXT_INNERKITS_ROOT/netshareclient/include/proxy/ipccallback",
+    "include",
+    "include/stub",
+    "include/utils",
+    "$NETWORKSHAREMANAGER_UTILS_DIR/event_report/include",
+  ]
+  if (netmanager_ext_share_traffic_limit_enable) {
+    defines = [ "SHARE_TRAFFIC_LIMIT_ENABLE" ]
+  }
+}
+
+ohos_shared_library("net_tether_manager") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    blocklist = "./cfi_blocklist.txt"
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$NETWORKSHAREMANAGER_INNERKITS_SOURCE_DIR/src/proxy/ipccallback/sharing_event_callback_proxy.cpp",
+    "src/networkshare_configuration.cpp",
+    "src/networkshare_hisysevent.cpp",
+    "src/networkshare_main_statemachine.cpp",
+    "src/networkshare_service.cpp",
+    "src/networkshare_sub_statemachine.cpp",
+    "src/networkshare_tracker.cpp",
+    "src/networkshare_upstreammonitor.cpp",
+    "src/router_advertisement_daemon.cpp",
+    "src/router_advertisement_params.cpp",
+    "src/utils/edm_parameter_utils.cpp",
+    "src/utils/networkshare_utils.cpp",
+    "src/utils/sys_timer.cpp",
+  ]
+
+  public_configs = [ ":net_tether_manager_config" ]
+
+  deps = [ "$NETMANAGER_EXT_ROOT/utils:net_event_report" ]
+  deps += [ "$EXT_INNERKITS_ROOT/netshareclient:netshare_service_interface_stub" ]
+
+  cflags = common_cflags + memory_optimization_cflags
+
+  cflags_cc = common_cflags + memory_optimization_cflags_cc
+
+  ldflags = memory_optimization_ldflags
+
+  external_deps = [
+    "ability_base:want",
+    "ability_base:zuri",
+    "ability_runtime:wantagent_innerkits",
+    "bluetooth:btframework",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "dhcp:dhcp_sdk",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hicollie:libhicollie",
+    "hisysevent:libhisysevent",
+    "init:libbeget_proxy",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "netmanager_base:net_conn_manager_if",
+    "netmanager_base:net_data_share",
+    "netmanager_base:net_manager_common",
+    "netmanager_base:net_native_manager_if",
+    "netmanager_base:net_stats_manager_if",
+    "netmanager_base:net_service_common",
+    "netmanager_base:netsys_controller",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "time_service:time_client",
+  ]
+
+  defines = []
+
+  if (communication_wifi_switch_enable) {
+    defines += [ "WIFI_MODOULE" ]
+    external_deps += [ "wifi:wifi_sdk" ]
+  }
+
+  if (battery_manager_switch_enable) {
+    defines += [ "SUPPORT_BATTERY_MANAGER" ]
+    external_deps += [ "battery_manager:batterysrv_client" ]
+  }
+
+  if (usb_manager_enable) {
+    defines += [ "USB_MODOULE" ]
+    external_deps += [
+      "drivers_interface_usb:usb_idl_headers",
+      "usb_manager:usbsrv_client",
+    ]
+  }
+
+  if (communication_bluetooth_switch_enable) {
+    defines += [ "BLUETOOTH_MODOULE=1" ]
+    external_deps += [ "bluetooth:btframework" ]
+  }
+
+  if (netmanager_ext_share_notification_enable) {
+    defines += [ "SHARE_NOTIFICATION_ENABLE" ]
+    sources +=
+        [ "src/networkshare_notification.cpp" ]
+  }
+
+  if (netmanager_ext_share_traffic_limit_enable) {
+    external_deps += [
+      "cellular_data:tel_cellular_data_api",
+      "core_service:tel_core_service_api",
+      "data_share:datashare_consumer",
+    ]
+    sources +=
+        [ "src/networkshare_trafficlimit.cpp" ]
+  }
+
+  defines += [
+    "NETMGR_LOG_TAG = \"NetworkShareManager\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "NETWORK_SHARING_CONFIG_PATH = \"/system/etc/communication/netmanager_ext/network_share_config.cfg\"",
+  ]
+
+  if (enable_netmgr_ext_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_ext"
+  subsystem_name = "communication"
+}
+
+ohos_static_library("net_tether_manager_static") {
+  testonly = true
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    blocklist = "./cfi_blocklist.txt"
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$NETWORKSHAREMANAGER_INNERKITS_SOURCE_DIR/src/proxy/ipccallback/sharing_event_callback_proxy.cpp",
+    "src/networkshare_configuration.cpp",
+    "src/networkshare_hisysevent.cpp",
+    "src/networkshare_main_statemachine.cpp",
+    "src/networkshare_service.cpp",
+    "src/networkshare_sub_statemachine.cpp",
+    "src/networkshare_tracker.cpp",
+    "src/networkshare_upstreammonitor.cpp",
+    "src/router_advertisement_daemon.cpp",
+    "src/router_advertisement_params.cpp",
+    "src/utils/edm_parameter_utils.cpp",
+    "src/utils/networkshare_utils.cpp",
+    "src/utils/sys_timer.cpp",
+  ]
+
+  public_configs = [ ":net_tether_manager_config" ]
+
+  deps = [
+    "$NETMANAGER_EXT_ROOT/utils:net_event_report",
+  ]
+  deps += [ "$EXT_INNERKITS_ROOT/netshareclient:netshare_service_interface_stub" ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_base:zuri",
+    "ability_runtime:wantagent_innerkits",
+    "bluetooth:btframework",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "dhcp:dhcp_sdk",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hicollie:libhicollie",
+    "hisysevent:libhisysevent",
+    "init:libbeget_proxy",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "netmanager_base:netsys_controller",
+    "netmanager_base:net_conn_manager_if",
+    "netmanager_base:net_data_share",
+    "netmanager_base:net_manager_common",
+    "netmanager_base:net_native_manager_if",
+    "netmanager_base:net_service_common",
+    "netmanager_base:net_stats_manager_if",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "time_service:time_client",
+  ]
+
+  defines = [
+    "NETMANAGER_TEST",
+  ]
+
+  if (communication_wifi_switch_enable) {
+    defines += [ "WIFI_MODOULE" ]
+    external_deps += [ "wifi:wifi_sdk" ]
+  }
+
+  if (battery_manager_switch_enable) {
+    defines += [ "SUPPORT_BATTERY_MANAGER" ]
+    external_deps += [ "battery_manager:batterysrv_client" ]
+  }
+
+  if (usb_manager_enable) {
+    defines += [ "USB_MODOULE" ]
+    external_deps += [
+      "drivers_interface_usb:usb_idl_headers",
+      "usb_manager:usbsrv_client",
+    ]
+  }
+
+  if (communication_bluetooth_switch_enable) {
+    defines += [ "BLUETOOTH_MODOULE=1" ]
+    external_deps += [ "bluetooth:btframework" ]
+  }
+
+  if (netmanager_ext_share_notification_enable) {
+    defines += [ "SHARE_NOTIFICATION_ENABLE" ]
+    sources +=
+        [ "src/networkshare_notification.cpp" ]
+  }
+
+  if (netmanager_ext_share_traffic_limit_enable) {
+    external_deps += [
+      "cellular_data:tel_cellular_data_api",
+      "core_service:tel_core_service_api",
+      "data_share:datashare_consumer",
+    ]
+    sources +=
+        [ "src/networkshare_trafficlimit.cpp" ]
+  }
+
+  defines += [
+    "NETMGR_LOG_TAG = \"NetworkShareManager\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "NETWORK_SHARING_CONFIG_PATH = \"/system/etc/communication/netmanager_ext/network_share_config.cfg\"",
+  ]
+
+  if (enable_netmgr_ext_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_ext"
+  subsystem_name = "communication"
+}
+
+## Install network_share_config.cfg to /system/etc/communication/netmanager_ext
+ohos_prebuilt_etc("network_share_config") {
+  source = "$NETMANAGER_EXT_ROOT/services/networksharemanager/network_share_config.cfg"
+  install_enable = true
+  relative_install_dir = "communication/netmanager_ext"
+  part_name = "netmanager_ext"
+  subsystem_name = "communication"
+}

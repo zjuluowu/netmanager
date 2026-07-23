@@ -1,0 +1,91 @@
+# Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#####################hydra-fuzz###################
+import("//build/config/features.gni")
+import("//build/test.gni")
+import("//foundation/communication/netmanager_ext/netmanager_ext_config.gni")
+##############################fuzztest##########################################
+EXT_SECURITY_PATH = "../../.."
+
+ohos_fuzztest("VpnClientRequestVpnPermissionFuzzTest") {
+  module_out_path = fuzz_test_path
+  fuzz_config_file =
+      "$NETMANAGER_EXT_ROOT/test/vpnmanager/fuzztest/vpnclientrequestvpnpermission_fuzzer"
+  _cfi_blocklist_path = "$NETMANAGER_EXT_ROOT/test/vpnmanager/fuzztest/vpnclientrequestvpnpermission_fuzzer/cfi_blocklist.txt"
+
+  include_dirs = [
+    "$EXT_INNERKITS_ROOT/netvpnclient/include",
+    "$EXT_INNERKITS_ROOT/netvpnclient/include/ipc",
+    "$EXT_SECURITY_PATH/security",
+    "$NETMANAGER_EXT_ROOT/utils/log/include",
+    "$NETMANAGER_EXT_ROOT/utils/event_report/include",
+    "$VPNMANAGER_SOURCE_DIR/include",
+    "$VPNMANAGER_SOURCE_DIR/include/ipc",
+  ]
+
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+    "-flto",
+    "-fvisibility=hidden",
+  ]
+  ldflags = [
+    "-flto",
+  ]
+
+  sources = [
+    "$EXT_SECURITY_PATH/security/netmanager_ext_test_security.cpp",
+    "vpnclient_fuzzer.cpp",
+  ]
+
+  deps = [
+    "$EXT_INNERKITS_ROOT/netvpnclient:net_vpn_manager_if",
+    "$NETMANAGER_EXT_ROOT/services/vpnmanager:net_vpn_manager_static",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:app_manager",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken_shared",
+    "access_token:libtoken_setproc",
+    "bundle_framework:appexecfwk_core",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "ipc:ipc_core",
+    "netmanager_base:net_conn_manager_if",
+    "netmanager_base:net_manager_common",
+    "netmanager_base:net_service_common",
+    "netmanager_base:netsys_controller",
+    "os_account:os_account_innerkits",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetVpnManager\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+}
+
+group("fuzztest") {
+  testonly = true
+  deps = [ ":VpnClientRequestVpnPermissionFuzzTest" ]
+}
