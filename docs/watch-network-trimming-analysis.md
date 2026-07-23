@@ -10,7 +10,7 @@
 
 仓库包含三个 OpenHarmony 部件：
 
-| 部件 | 主要职责 | 声明的 ROM 预算 | 声明的 RAM 预算 |
+| 部件 | 主要职责 | ROM 预算（`bundle.json`） | RAM 预算（`bundle.json`） |
 | --- | --- | --- | --- |
 | `netmanager_base` | 网络连接、策略、统计、Netsys 原生服务 | 4.5 MB | 10 MB |
 | `netmanager_ext` | 以太网、网络共享、mDNS、VPN、防火墙、网络切片、穿戴分布式网络 | 2 MB | 500 KB |
@@ -124,7 +124,7 @@
 
 > 给定产品必需能力集合、硬件条件和 RAM/ROM 预算，求满足依赖约束的最小组件及运行时闭包。
 
-建立以下可计算映射：
+建立以下可计算映射。箭头表示逐层推导：每一层以上一层的约束为输入，生成下一层的最小合法闭包。
 
 ```text
 Product Profile
@@ -134,8 +134,6 @@ Product Profile
 → Runtime Deployment
 → Binary/Memory Layout
 ```
-
-箭头表示能力求解过程中的逐层推导：每一层以上一层的约束为输入，生成下一层的最小合法闭包。
 
 每项能力的统一描述至少应包含：
 
