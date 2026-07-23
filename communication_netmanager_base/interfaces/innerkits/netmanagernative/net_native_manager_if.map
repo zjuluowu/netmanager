@@ -1,0 +1,100 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{
+  global:
+    extern "C++" {
+      "non-virtual thunk to OHOS::NetsysNative::NetDnsResultCallbackStub::OnDnsResultReport(unsigned int, std::__h::list<OHOS::NetsysNative::NetDnsResultReport, std::__h::allocator<OHOS::NetsysNative::NetDnsResultReport>>)";
+      "non-virtual thunk to OHOS::NetsysNative::NetDnsResultCallbackStub::OnDnsQueryAbnormalReport(unsigned int, OHOS::NetsysNative::NetDnsQueryResultReport)";
+      "non-virtual thunk to OHOS::NetsysNative::NetDnsResultCallbackStub::OnDnsQueryResultReport(unsigned int, std::__h::list<OHOS::NetsysNative::NetDnsQueryResultReport, std::__h::allocator<OHOS::NetsysNative::NetDnsQueryResultReport>>)";
+      "non-virtual thunk to OHOS::NetsysNative::NotifyCallbackStub::~NotifyCallbackStub()";
+      "non-virtual thunk to OHOS::NetsysNative::NetsysTrafficCallbackStub::OnExceedTrafficLimits(signed char&)";
+      "OHOS::NetManagerStandard::InterceptRecord::Marshalling(OHOS::Parcel&) const";
+      "OHOS::NetManagerStandard::InterceptRecord::Unmarshalling(OHOS::Parcel&)";
+      "OHOS::NetManagerStandard::NetFirewallIpParam::GetEndIp() const";
+      "OHOS::NetManagerStandard::NetFirewallIpParam::GetStartIp() const";
+      "OHOS::NetManagerStandard::NetFirewallRule::Marshalling(OHOS::Parcel&) const";
+      "OHOS::NetManagerStandard::NetFirewallRule::Unmarshalling(OHOS::Parcel&)";
+      "OHOS::NetManagerStandard::UidRange::UidRange(int, int, unsigned int, unsigned int)";
+      "OHOS::NetsysNative::NotifyCallbackStub::~NotifyCallbackStub()";
+      "OHOS::NetsysNative::NotifyCallbackStub::NotifyCallbackStub()";
+      "OHOS::NetsysNative::NotifyCallbackStub::OnRemoteRequest(unsigned int, OHOS::MessageParcel&, OHOS::MessageParcel&, OHOS::MessageOption&)";
+      "OHOS::NetsysNative::NetDnsResultCallbackStub::NetDnsResultCallbackStub()";
+      "OHOS::NetsysNative::NetDnsResultCallbackStub::OnDnsResultReport(unsigned int, std::__h::list<OHOS::NetsysNative::NetDnsResultReport, std::__h::allocator<OHOS::NetsysNative::NetDnsResultReport>>)";
+      "OHOS::NetsysNative::NetDnsResultCallbackStub::OnDnsQueryAbnormalReport(unsigned int, OHOS::NetsysNative::NetDnsQueryResultReport)";
+      "OHOS::NetsysNative::NetDnsResultCallbackStub::OnDnsQueryResultReport(unsigned int, std::__h::list<OHOS::NetsysNative::NetDnsQueryResultReport, std::__h::allocator<OHOS::NetsysNative::NetDnsQueryResultReport>>)";
+      "OHOS::NetsysNative::NetDnsResultCallbackStub::OnRemoteRequest(unsigned int, OHOS::MessageParcel&, OHOS::MessageParcel&, OHOS::MessageOption&)";
+      "OHOS::NetsysNative::NetFirewallCallbackStub::NetFirewallCallbackStub()";
+      "OHOS::NetsysNative::NetFirewallCallbackStub::OnRemoteRequest(unsigned int, OHOS::MessageParcel&, OHOS::MessageParcel&, OHOS::MessageOption&)";
+      "OHOS::NetsysNative::NetsysTrafficCallbackStub::NetsysTrafficCallbackStub()";
+      "OHOS::NetsysNative::NetsysTrafficCallbackStub::OnExceedTrafficLimits(signed char&)";
+      "OHOS::NetsysNative::NetsysTrafficCallbackStub::OnRemoteRequest(unsigned int, OHOS::MessageParcel&, OHOS::MessageParcel&, OHOS::MessageOption&)";
+      "OHOS::NetManagerStandard::NetIpMacInfo::Marshalling(OHOS::Parcel&, OHOS::sptr<OHOS::NetManagerStandard::NetIpMacInfo> const&)";
+      "OHOS::NetManagerStandard::NetPortStatesInfo::Marshalling(OHOS::Parcel&, OHOS::sptr<OHOS::NetManagerStandard::NetPortStatesInfo> const&)";
+      "OHOS::NetManagerStandard::TcpNetPortStatesInfo::Marshalling(OHOS::Parcel&, OHOS::sptr<OHOS::NetManagerStandard::TcpNetPortStatesInfo> const&)";
+      "OHOS::NetManagerStandard::UdpNetPortStatesInfo::Marshalling(OHOS::Parcel&, OHOS::sptr<OHOS::NetManagerStandard::UdpNetPortStatesInfo> const&)";
+      "OHOS::NetManagerStandard::NetConnInfo::Marshalling(OHOS::Parcel&) const";
+      "OHOS::NetManagerStandard::NetConnInfo::Unmarshalling(OHOS::Parcel&)";
+      "virtual thunk to OHOS::NetsysNative::NotifyCallbackStub::~NotifyCallbackStub()";
+      "vtable for OHOS::NetManagerStandard::InterceptRecord";
+      "vtable for OHOS::NetManagerStandard::NetFirewallDnsParam";
+      "vtable for OHOS::NetManagerStandard::NetFirewallDnsRule";
+      "vtable for OHOS::NetManagerStandard::NetFirewallDomainParam";
+      "vtable for OHOS::NetManagerStandard::NetFirewallDomainRule";
+      "vtable for OHOS::NetManagerStandard::NetFirewallIpParam";
+      "vtable for OHOS::NetManagerStandard::NetFirewallIpRule";
+      "vtable for OHOS::NetManagerStandard::NetFirewallPortParam";
+      "vtable for OHOS::NetManagerStandard::NetFirewallRule";
+      "vtable for OHOS::NetManagerStandard::NetIpMacInfo";
+      "vtable for OHOS::NetManagerStandard::NetPortStatesInfo";
+      "vtable for OHOS::NetManagerStandard::TcpNetPortStatesInfo";
+      "vtable for OHOS::NetManagerStandard::UdpNetPortStatesInfo";
+      "vtable for OHOS::NetManagerStandard::NetConnInfo";
+      "vtable for OHOS::NetManagerStandard::UidRange";
+      "vtable for OHOS::NetsysNative::NetsysNativeServiceProxy";
+      "vtable for OHOS::NetsysNative::NetDnsResultCallbackStub";
+      "vtable for OHOS::NetsysNative::NetDnsResultAddrInfo";
+      "vtable for OHOS::NetsysNative::NetDnsResultServerInfo";
+      "vtable for OHOS::NetsysNative::NetDnsResultReport";
+      "vtable for OHOS::NetsysNative::NetDnsQueryResultAddrInfo";
+      "vtable for OHOS::NetsysNative::NetDnsQueryResultReport";
+      "vtable for OHOS::NetsysNative::NetsysTrafficCallbackStub";
+      "VTT for OHOS::NetManagerStandard::InterceptRecord";
+      "VTT for OHOS::NetManagerStandard::NetFirewallDomainParam";
+      "VTT for OHOS::NetManagerStandard::NetFirewallDomainRule";
+      "VTT for OHOS::NetManagerStandard::NetFirewallDnsParam";
+      "VTT for OHOS::NetManagerStandard::NetFirewallDnsRule";
+      "VTT for OHOS::NetManagerStandard::NetFirewallIpParam";
+      "VTT for OHOS::NetManagerStandard::NetFirewallIpRule";
+      "VTT for OHOS::NetManagerStandard::NetFirewallPortParam";
+      "VTT for OHOS::NetManagerStandard::NetFirewallRule";
+      "VTT for OHOS::NetManagerStandard::NetIpMacInfo";
+      "VTT for OHOS::NetManagerStandard::NetPortStatesInfo";
+      "VTT for OHOS::NetManagerStandard::TcpNetPortStatesInfo";
+      "VTT for OHOS::NetManagerStandard::UdpNetPortStatesInfo";
+      "VTT for OHOS::NetManagerStandard::NetConnInfo";
+      "VTT for OHOS::NetManagerStandard::UidRange";
+      "VTT for OHOS::NetsysNative::NetsysNativeServiceProxy";
+      "VTT for OHOS::NetsysNative::NetDnsResultAddrInfo";
+      "VTT for OHOS::NetsysNative::NetDnsResultServerInfo";
+      "VTT for OHOS::NetsysNative::NetDnsResultCallbackStub";
+      "VTT for OHOS::NetsysNative::NetDnsResultReport";
+      "VTT for OHOS::NetsysNative::NetDnsQueryResultAddrInfo";
+      "VTT for OHOS::NetsysNative::NetDnsQueryResultReport";
+      "VTT for OHOS::NetsysNative::NetsysTrafficCallbackStub";
+      "VTT for OHOS::nmd::NetworkRouteInfo";
+      "vtable for OHOS::nmd::NetworkRouteInfo";
+    };
+  local:
+   *;
+};

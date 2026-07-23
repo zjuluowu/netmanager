@@ -1,0 +1,100 @@
+/*
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef NET_STATS_DATABASE_DEFINES_H
+#define NET_STATS_DATABASE_DEFINES_H
+
+#include <map>
+
+#include "netmanager_base_common_utils.h"
+#include "net_stats_info.h"
+
+namespace OHOS {
+namespace NetManagerStandard {
+namespace NetStatsDatabaseDefines {
+constexpr const char *NET_STATS_DATABASE_PATH = "/data/service/el1/public/netmanager/net_stats_data.db";
+constexpr const char *NET_STATS_DATABASE_BACK_PATH = "/data/service/el1/public/netmanager/net_stats_data_back.db";
+constexpr const char *VERSION_TABLE_CREATE_PARAM =
+    "Name CHAR(20) NOT NULL UNIQUE,"
+    "Version INTEGER NOT NULL DEFAULT 0";
+constexpr const char *UID_TABLE_CREATE_PARAM =
+    "UID INTEGER NOT NULL,"
+    "IFace CHAR(50) NOT NULL,"
+    "Date INTEGER NOT NULL,"
+    "RxBytes INTEGER NOT NULL,"
+    "RxPackets INTEGER NOT NULL,"
+    "TxBytes INTEGER NOT NULL,"
+    "TxPackets INTEGER NOT NULL,"
+    "Ident CHAR(100) NOT NULL,"
+    "Flag INTEGER NOT NULL DEFAULT 0";
+constexpr const char *UID_SIM_TABLE_CREATE_PARAM =
+    "UID INTEGER NOT NULL,"
+    "IFace CHAR(50) NOT NULL,"
+    "Date INTEGER NOT NULL,"
+    "RxBytes INTEGER NOT NULL,"
+    "RxPackets INTEGER NOT NULL,"
+    "TxBytes INTEGER NOT NULL,"
+    "TxPackets INTEGER NOT NULL,"
+    "Ident CHAR(100) NOT NULL,"
+    "Flag INTEGER NOT NULL DEFAULT 0";
+constexpr const char *IFACE_TABLE_CREATE_PARAM =
+    "IFace CHAR(50) NOT NULL,"
+    "Date INTEGER NOT NULL,"
+    "RxBytes INTEGER NOT NULL,"
+    "RxPackets INTEGER NOT NULL,"
+    "TxBytes INTEGER NOT NULL,"
+    "TxPackets INTEGER NOT NULL";
+constexpr const char *CALIBRATION_TABLE_CREATE_PARAM =
+    "Ident CHAR(100) NOT NULL,"
+    "StartDate INTEGER NOT NULL,"
+    "EndDate INTEGER NOT NULL,"
+    "UsedData BIGINT NOT NULL DEFAULT 0";
+constexpr const char *CHANGE_TABLE_CREATE_PARAM =
+    "StartTime INTEGER NOT NULL";
+constexpr const char *TRAFFIC_PLAN_TABLE_CREATE_PARAM =
+    "ICCID CHAR(100) NOT NULL UNIQUE,"
+    "simId INTEGER NOT NULL,"
+    "DisplayTrafficSwitch INTEGER NOT NULL DEFAULT 0,"
+    "UnlimitTrafficSwitch INTEGER NOT NULL DEFAULT 0,"
+    "TrafficLimit INTEGER NOT NULL DEFAULT 0,"
+    "StartDate INTEGER NOT NULL DEFAULT 1,"
+    "OverLimitBehavior INTEGER NOT NULL DEFAULT 1,"
+    "MonthlyLimitPercentage INTEGER NOT NULL DEFAULT 80,"
+    "DailyLimitPercentage INTEGER NOT NULL DEFAULT 10";
+constexpr const char *UID_TABLE_PARAM_LIST = "UID,IFace,Date,RxBytes,RxPackets,TxBytes,TxPackets,Ident,Flag,UserId";
+constexpr const char *UID_SIM_TABLE_PARAM_LIST = "UID,IFace,Date,RxBytes,RxPackets,TxBytes,TxPackets,Ident,Flag,UserId";
+constexpr const char *IFACE_TABLE_PARAM_LIST = "IFace,Date,RxBytes,RxPackets,TxBytes,TxPackets,Ident";
+constexpr const char *CALIBRATION_TABLE_PARAM_LIST = "Ident,StartDate,EndDate,UsedData";
+constexpr const char *CHANGE_TABLE_PARAM_LIST = "StartTime";
+constexpr const char *VERSION_TABLE = "T_version";
+constexpr const char *IFACE_TABLE = "T_iface";
+constexpr const char *UID_TABLE = "T_uid";
+constexpr const char *UID_SIM_TABLE = "T_uid_sim";
+constexpr const char *CALIBRATION_TABLE = "T_calibration_traffic";
+constexpr const char *CHANGE_TABLE = "T_change";
+constexpr const char *TRAFFIC_PLAN_TABLE = "T_traffic_plan";
+
+constexpr int32_t UID_PARAM_NUM = 10;
+constexpr int32_t IFACE_PARAM_NUM = 7;
+
+enum class DataType {
+    UID,
+    IFACE,
+};
+} // namespace NetStatsDatabaseDefines
+} // namespace NetManagerStandard
+} // namespace OHOS
+
+#endif // NET_STATS_DATABASE_DEFINES_H

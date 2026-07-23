@@ -1,0 +1,67 @@
+{
+    "string":[
+        {
+            "name":"netstats_excess_daymark_notofication_title",
+            "value":"Günlük limit aşıldı",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"netstats_month_limit_message",
+            "value":"Aylık veri sınırına ulaşıldı (%s)",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthmark_notofication_title",
+            "value":"Aylık sınır aşıldı",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_daily_notify_message",
+            "value":"Bugün kullanılan veriler sınıra ulaştı (%s)",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthmark_notofication_title_sub",
+            "value":"SIM %d veri kullanım uyarısı",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthlimit_notofication_title_sub",
+            "value":"SIM %d veri kullanım uyarısı",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_daymark_notofication_title_sub",
+            "value":"SIM %d veri kullanım uyarısı",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_month_notify_message",
+            "value":"Aylık veri kullanımı sınır oranı: %s",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthlimit_notofication_title",
+            "value":"Aylık sınır aşıldı",
+            "attr":{
+                "priority":"LT"
+            }
+        }
+    ]
+}

@@ -1,0 +1,67 @@
+{
+    "string":[
+        {
+            "name":"netstats_excess_daymark_notofication_title",
+            "value":"일일 한도 초과",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"netstats_month_limit_message",
+            "value":"월별 데이터 한도에 도달했습니다(%s)",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthmark_notofication_title",
+            "value":"월별 한도 초과",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_daily_notify_message",
+            "value":"일일 데이터 사용량 제한(%s)",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthmark_notofication_title_sub",
+            "value":"SIM %d 데이터 사용 알림",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthlimit_notofication_title_sub",
+            "value":"SIM %d 데이터 사용 알림",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_daymark_notofication_title_sub",
+            "value":"SIM %d 데이터 사용 알림",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_month_notify_message",
+            "value":"월별 데이터 사용량 제한(%s)",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthlimit_notofication_title",
+            "value":"월별 한도 초과",
+            "attr":{
+                "priority":"LT"
+            }
+        }
+    ]
+}

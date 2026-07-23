@@ -1,0 +1,56 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+sequenceable OHOS.NetManagerStandard.NetStatsInfo;
+sequenceable OHOS.NetManagerStandard.NetStatsNetwork;
+sequenceable OHOS.NetManagerStandard.NetStatsInfoSequence;
+sequenceable NetPushStatsInfo..OHOS.NetManagerStandard.PushStatsInfo;
+interface OHOS.NetManagerStandard.INetStatsCallback;
+interface OHOS.NetManagerStandard.INetStatsService {
+    void GetIfaceRxBytes([out] unsigned long stats, [in] String interfaceName);
+    void GetIfaceTxBytes([out] unsigned long stats, [in] String interfaceName);
+    void GetCellularRxBytes([out] unsigned long stats);
+    void GetCellularTxBytes([out] unsigned long stats);
+    void GetAllRxBytes([out] unsigned long stats);
+    void GetAllTxBytes([out] unsigned long stats);
+    void GetUidRxBytes([out] unsigned long stats, [in] unsigned int uid);
+    void GetUidTxBytes([out] unsigned long stats, [in] unsigned int uid);
+    void GetAllStatsInfo([out] List<NetStatsInfo> info);
+    void GetAllSimStatsInfo([out] List<NetStatsInfo> infos);
+    void GetTrafficStatsByNetwork([out] Map<unsigned int, NetStatsInfo> infos,
+        [in] NetStatsNetwork network);
+    void GetTrafficStatsByUidNetwork([out] List<NetStatsInfoSequence> infos, [in] unsigned int uid,
+        [in] NetStatsNetwork network);
+    void GetMonthTrafficStatsByNetwork([in] unsigned int simId, [out] unsigned long monthTrafficData);
+    void SetAppStats([in] PushStatsInfo info);
+    void SetDpaAppStats([in] NetStatsInfo info);
+    void RegisterNetStatsCallback([in] INetStatsCallback cb);
+    void UnregisterNetStatsCallback([in] INetStatsCallback cb);
+    void GetIfaceStatsDetail([in] String iface, [in] unsigned long start, [in] unsigned long end,
+        [out] NetStatsInfo statsInfo);
+    void GetUidStatsDetail([in] String iface, [in] unsigned int uid, [in] unsigned long start,
+        [in] unsigned long end, [out] NetStatsInfo statsInfo);
+    void UpdateIfacesStats([in] String iface, [in] unsigned long start, [in] unsigned long end,
+        [in] NetStatsInfo stats);
+    void UpdateStatsData();
+    void ResetFactory();
+    void GetCookieRxBytes([out] unsigned long stats, [in] unsigned long cookie);
+    void GetCookieTxBytes([out] unsigned long stats, [in] unsigned long cookie);
+    void SaveSharingTraffic([in] NetStatsInfo infos);
+    void SetCalibrationTraffic([in] unsigned int simId, [in] long remainingData,
+        [in] unsigned long totalMonthlyData);
+    void SetTrafficPlanInfo([in] int simId, [in] int param, [in] long value);
+    void GetTrafficPlanInfo([in] int simId, [in] int param, [out] long value);
+}

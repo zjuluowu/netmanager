@@ -1,0 +1,67 @@
+{
+    "string":[
+        {
+            "name":"netstats_excess_daymark_notofication_title",
+            "value":"Лимит превышен",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"netstats_month_limit_message",
+            "value":"Достигнут ежемесячный лимит трафика (%s)",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthmark_notofication_title",
+            "value":"Больше ежемесячного лимита",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_daily_notify_message",
+            "value":"Достигнут лимит на сегодня (%s)",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthmark_notofication_title_sub",
+            "value":"Расход трафика SIM-карты %d",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthlimit_notofication_title_sub",
+            "value":"Расход трафика SIM-карты %d",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_daymark_notofication_title_sub",
+            "value":"Расход трафика SIM-карты %d",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_month_notify_message",
+            "value":"Использовано %s от лимита на месяц",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthlimit_notofication_title",
+            "value":"Больше лимита на месяц",
+            "attr":{
+                "priority":"LT"
+            }
+        }
+    ]
+}

@@ -1,0 +1,67 @@
+{
+    "string":[
+        {
+            "name":"netstats_excess_daymark_notofication_title",
+            "value":"一日の上限の超過",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"netstats_month_limit_message",
+            "value":"1か月のデータ通信量の上限（%s）に達しました",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthmark_notofication_title",
+            "value":"1か月の上限を超過",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_daily_notify_message",
+            "value":"今日のデータ通信量（上限：%s）",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthmark_notofication_title_sub",
+            "value":"SIM %dデータ通信量アラート",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthlimit_notofication_title_sub",
+            "value":"SIM %dデータ通信量アラート",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_daymark_notofication_title_sub",
+            "value":"SIM %dデータ通信量アラート",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_month_notify_message",
+            "value":"1か月のデータ通信量（上限：%s）",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthlimit_notofication_title",
+            "value":"1か月の上限を超過",
+            "attr":{
+                "priority":"LT"
+            }
+        }
+    ]
+}

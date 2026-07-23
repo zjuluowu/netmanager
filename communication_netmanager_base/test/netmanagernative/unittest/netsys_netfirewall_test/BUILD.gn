@@ -1,0 +1,73 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+ohos_unittest("netsys_netfirewall_test") {
+  module_out_path = "netmanager_base/netmanager_base/netsys_netfirewall_test"
+
+  sources = [
+    "bpf_netfirewall_test.cpp",
+    "netsys_netfirewall_test.cpp",
+  ]
+
+  include_dirs = [
+    "$NETSYSNATIVE_SOURCE_DIR/bpf/include",
+    "$NETMANAGER_BASE_ROOT/utils/common_utils/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include",
+    "$NETMANAGER_BASE_ROOT/interfaces/innerkits/include",
+    "$NETMANAGER_BASE_ROOT/interfaces/innerkits/netmanagernative/include",
+  ]
+
+  deps = [
+    "$NETSYSNATIVE_SOURCE_DIR/bpf:netsys",
+    "$NETSYSNATIVE_SOURCE_DIR/bpf:netsys_bpf_utils",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetSysNetFirewallTest\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "private = public",
+  ]
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "safwk:system_ability_fwk",
+  ]
+
+  public_configs = [ "$NETMANAGER_BASE_ROOT/resource:coverage_flags" ]
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+ohos_unittest("suffix_match_trie_test") {
+  module_out_path = "netmanager_base/netmanager_base/netsys_netfirewall_test"
+
+  include_dirs = [ "$NETMANAGER_BASE_ROOT/utils/common_utils/include" ]
+
+  sources = [ "suffix_match_trie_test.cpp" ]
+
+  external_deps = [ "c_utils:utils" ]
+
+  public_configs = [ "$NETMANAGER_BASE_ROOT/resource:coverage_flags" ]
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

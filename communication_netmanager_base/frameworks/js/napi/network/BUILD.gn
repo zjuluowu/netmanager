@@ -1,0 +1,77 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+ohos_shared_library("network") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    boundary_sanitize = true
+    all_ubsan = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  include_dirs = [
+    "async_context/include",
+    "async_work/include",
+    "constant/include",
+    "network_exec/include",
+    "network_module/include",
+    "observer/include",
+    "options/include",
+    "$NETMANAGER_BASE_ROOT/utils/common_utils/include",
+  ]
+
+  sources = [
+    "async_context/src/gettype_context.cpp",
+    "async_context/src/subscribe_context.cpp",
+    "async_context/src/unsubscribe_context.cpp",
+    "async_work/src/network_async_work.cpp",
+    "network_exec/src/network_exec.cpp",
+    "network_module/src/network_module.cpp",
+    "observer/src/network_observer.cpp",
+  ]
+
+  cflags = [
+    "-D_FORTIFY_SOURCE=2",
+    "-O2",
+  ]
+
+  cflags_cc = [
+    "-D_FORTIFY_SOURCE=2",
+    "-O2",
+  ]
+
+  deps = [
+    "$INNERKITS_ROOT/netconnclient:net_conn_manager_if",
+    "$NETMANAGER_BASE_ROOT/utils/napi_utils:napi_utils",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "libuv:uv",
+    "napi:ace_napi",
+    "node:node_header_notice",
+    "samgr:samgr_proxy",
+  ]
+
+  relative_install_dir = "module"
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

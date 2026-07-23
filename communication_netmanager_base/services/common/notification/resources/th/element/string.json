@@ -1,0 +1,67 @@
+{
+    "string":[
+        {
+            "name":"netstats_excess_daymark_notofication_title",
+            "value":"เกินขีดจำกัดรายวัน",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"netstats_month_limit_message",
+            "value":"ถึงขีดจำกัดข้อมูลรายเดือน (%s) แล้ว",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthmark_notofication_title",
+            "value":"เกินขีดจำกัดรายเดือน",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_daily_notify_message",
+            "value":"ข้อมูลที่ใช้วันนี้อยู่ที่ขีดจำกัด (%s)",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthmark_notofication_title_sub",
+            "value":"การแจ้งเตือนการใช้ข้อมูลซิม %d",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthlimit_notofication_title_sub",
+            "value":"การแจ้งเตือนการใช้ข้อมูลซิม %d",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_daymark_notofication_title_sub",
+            "value":"การแจ้งเตือนการใช้ข้อมูลซิม %d",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_month_notify_message",
+            "value":"การใช้ข้อมูลรายเดือนอยู่ที่ %s ของขีดจำกัด",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthlimit_notofication_title",
+            "value":"เกินขีดจำกัดรายเดือน",
+            "attr":{
+                "priority":"LT"
+            }
+        }
+    ]
+}

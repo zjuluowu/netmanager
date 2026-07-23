@@ -1,0 +1,89 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+config("statistics_config") {
+  visibility = [ ":statistics" ]
+
+  include_dirs = [
+    "include",
+    "include/context",
+  ]
+
+  cflags = [
+    "-D_FORTIFY_SOURCE=2",
+    "-O2",
+  ]
+
+  cflags_cc = [
+    "-D_FORTIFY_SOURCE=2",
+    "-O2",
+  ]
+}
+
+ohos_shared_library("statistics") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    boundary_sanitize = true
+    all_ubsan = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "src/context/get_cellular_rxbytes_context.cpp",
+    "src/context/get_iface_rxbytes_context.cpp",
+    "src/context/get_iface_stats_context.cpp",
+    "src/context/get_iface_uid_stats_context.cpp",
+    "src/context/get_month_traffic_stats_context_by_network.cpp",
+    "src/context/get_sockfd_rxbytes_context.cpp",
+    "src/context/get_traffic_stats_by_network_context.cpp",
+    "src/context/get_traffic_stats_by_uid_network_context.cpp",
+    "src/context/get_uid_rxbytes_context.cpp",
+    "src/context/update_iface_stats_context.cpp",
+    "src/context/get_self_traffic_stats_context.cpp",
+    "src/context/set_calibration_traffic_context.cpp",
+    "src/context/set_traffic_plan_info_context.cpp",
+    "src/context/get_traffic_plan_info_context.cpp",
+    "src/statistics_async_work.cpp",
+    "src/statistics_callback_observer.cpp",
+    "src/statistics_exec.cpp",
+    "src/statistics_module.cpp",
+    "src/statistics_observer_wrapper.cpp",
+  ]
+
+  configs = [ ":statistics_config" ]
+
+  deps = [
+    "$INNERKITS_ROOT/netstatsclient:net_stats_manager_if",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETMANAGER_BASE_ROOT/utils/napi_utils:napi_utils",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "libuv:uv",
+    "napi:ace_napi",
+    "node:node_header_notice",
+  ]
+
+  relative_install_dir = "module/net"
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

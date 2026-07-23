@@ -1,0 +1,154 @@
+# Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+config("net_native_manager_if_config") {
+  # header file path
+  include_dirs = [
+    "$INNERKITS_ROOT/include",
+    "$INNERKITS_ROOT/netstatsclient/include/proxy",
+    "$INNERKITS_ROOT/netstatsclient/include",
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$INNERKITS_ROOT/netconnclient/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys",
+  ]
+
+  cflags = []
+  defines = []
+  if (is_double_framework) {
+    cflags += [ "-DCONFIG_DUAL_FRAMEWORK" ]
+  }
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+  if (is_standard_system) {
+    cflags += [ "-DCONFIG_STANDARD_SYSTEM" ]
+  }
+  if (defined(build_public_version) && build_public_version) {
+    cflags += [ "-DBUILD_PUBLIC_VERSION" ]
+  }
+  if (netmanager_base_enable_feature_net_firewall) {
+    defines += [ "FEATURE_NET_FIREWALL_ENABLE" ]
+  }
+  if (netmanager_base_enable_feature_wearable_distributed_net) {
+    defines += [ "FEATURE_WEARABLE_DISTRIBUTED_NET_ENABLE" ]
+  }
+  if (netmanager_base_enable_feature_sysvpn) {
+    defines += [ "SUPPORT_SYSVPN" ]
+  }
+  if (netmanager_base_feature_enterprise_route_custom) {
+    defines += [ "FEATURE_ENTERPRISE_ROUTE_CUSTOM" ]
+  }
+}
+
+ohos_static_library("net_native_parcel") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/dhcp_result_parcel.cpp",
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/uid_range.cpp",
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/route_type.cpp",
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/dnsresolv/netsys_net_dns_result_data.cpp",
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/netsys_net_diag_data.cpp",
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/net_conn_info.cpp",
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/net_ip_mac_info.cpp",
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/net_port_states_info.cpp",
+  ]
+
+  if (netmanager_base_enable_feature_net_firewall) {
+    sources += [ "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/netfirewall_parcel.cpp" ]
+  }
+
+  include_dirs = [ "$INNERKITS_ROOT/netmanagernative/include" ]
+
+  deps = [ "$NETMANAGER_BASE_ROOT/utils:net_manager_common" ]
+  external_deps = [ "c_utils:utils" ]
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+ohos_shared_library("net_native_manager_if") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  cflags = common_cflags
+
+  cflags_cc = common_cflags
+  sources = [
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/net_diag_callback_stub.cpp",
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/netsys_native_service_proxy.cpp",
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/notify_callback_stub.cpp",
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/netsys_traffic_callback_stub.cpp",
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/dnsresolv/net_dns_result_callback_stub.cpp",
+  ]
+
+  include_dirs = [
+    "$NETMANAGER_BASE_ROOT/utils/common_utils/include",
+    "$NETSYSCONTROLLER_ROOT_DIR/include/",
+  ]
+
+  version_script = "net_native_manager_if.map"
+
+  public_configs = [ ":net_native_manager_if_config" ]
+
+  if (netmanager_base_enable_feature_net_firewall) {
+    sources += [
+      "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/netfirewall_callback_proxy.cpp",
+      "$NETSYSNATIVE_SOURCE_DIR/src/netfirewall_callback_stub.cpp",
+    ]
+
+    public_configs += [ "$NETMANAGER_BASE_ROOT/resource:coverage_flags" ]
+  }
+
+  deps = [
+    ":net_native_parcel",
+    "$INNERKITS_ROOT/netstatsclient:net_stats_parcel",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+    "ipc:ipc_single",
+    "samgr:samgr_proxy",
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetNativeMnager\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  innerapi_tags = [ "platformsdk" ]
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

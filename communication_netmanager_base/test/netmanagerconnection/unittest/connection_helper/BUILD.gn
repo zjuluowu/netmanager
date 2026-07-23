@@ -1,0 +1,42 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+ohos_unittest("icu_helper_test") {
+  module_out_path = "netmanager_base/netmanager_base/connection_helper"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$NETMANAGER_BASE_ROOT/frameworks/js/napi/connection/connection_helper/src/icu_helper.cpp",
+    "icu_helper_test.cpp",
+  ]
+
+  include_dirs = [
+    "$NETMANAGER_BASE_ROOT/frameworks/js/napi/connection/connection_helper/include",
+    "$NETMANAGER_BASE_ROOT/interfaces/innerkits/include",
+  ]
+
+  external_deps = [ "icu:shared_icuuc" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

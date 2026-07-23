@@ -1,0 +1,114 @@
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/config/features.gni")
+
+#####################hydra-fuzz###################
+import("//build/test.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+##############################fuzztest##########################################
+ohos_fuzztest("NetStatsClientFuzzTest") {
+  module_out_path = fuzz_test_path
+  fuzz_config_file = "$NETMANAGER_BASE_ROOT/test/fuzztest/netstatsclient_fuzzer"
+  _cfi_blocklist_path = "$NETMANAGER_BASE_ROOT/test/fuzztest/netstatsclient_fuzzer/cfi_blocklist.txt"
+
+  include_dirs = [
+    "$INNERKITS_ROOT/netstatsclient/include",
+    "$NETCONNMANAGER_COMMON_DIR/include",
+    "$NETMANAGER_BASE_ROOT/utils/bundle_utils/include",
+    "$NETSTATSMANAGER_SOURCE_DIR/include/stub",
+    "$NETSTATSMANAGER_SOURCE_DIR/include",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include/manager",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys/wrapper",
+    "$NETMANAGERNATIVE_ROOT/netsys_bpf_map/include",
+  ]
+
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+    "-flto",
+    "-fvisibility=hidden",
+  ]
+
+  ldflags = [ "-flto" ]
+
+  sources = [
+    "$NETMANAGER_BASE_ROOT/test/commonduplicatedcode/common_mock_netmanager_permission.cpp",
+    "net_stats_client_fuzzer.cpp",
+  ]
+
+  deps = [
+    "$INNERKITS_ROOT/netconnclient:net_conn_manager_if_static",
+    "$INNERKITS_ROOT/netstatsclient:net_stats_manager_if",
+    "$NETMANAGER_BASE_ROOT/services/netstatsmanager:net_stats_manager_static",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETSYSCONTROLLER_ROOT_DIR:netsys_controller",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+  ]
+
+  defines = [
+    "HI_LOG_ENABLE",
+    "DH_LOG_TAG=\"NetStatsClientFuzzTest\"",
+    "LOG_DOMAIN=0xD004100",
+  ]
+
+  external_deps = [
+    "ability_runtime:ability_manager",
+    "ability_runtime:dataobs_manager",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "data_share:datashare_consumer",
+    "distributed_notification_service:ans_innerkits",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "i18n:intl_util",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "ipc:ipc_core",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "os_account:os_account_innerkits"
+  ]
+
+  if (netmanager_base_enable_traffic_statistic) {
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+    external_deps += [
+      "cellular_data:tel_cellular_data_api",
+      "core_service:tel_core_service_api",
+      "state_registry:tel_state_registry_api",
+    ]
+  }
+
+  if (netmanager_base_share_traffic_limit_enable) {
+    defines += [ "SUPPORT_NETWORK_SHARE" ]
+    external_deps += [ "netmanager_ext:net_tether_manager_if" ]
+  }
+}
+
+###############################################################################
+group("fuzztest") {
+  testonly = true
+
+  deps = [ ":NetStatsClientFuzzTest" ]
+}
+
+###############################################################################
+

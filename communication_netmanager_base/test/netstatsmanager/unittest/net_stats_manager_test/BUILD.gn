@@ -1,0 +1,663 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+ohos_unittest("net_stats_mock_data") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  module_out_path = "netmanager_base/netmanager_base/net_stats_manager_test"
+  sources = [ "net_stats_mock_data.cpp" ]
+
+  include_dirs = [
+    "$INNERKITS_ROOT/netstatsclient/include",
+    "$NETCONNMANAGER_COMMON_DIR/include",
+    "$NETMANAGER_BASE_ROOT/utils/bundle_utils/include",
+    "$NETSTATSMANAGER_SOURCE_DIR/include/stub",
+    "$NETSTATSMANAGER_SOURCE_DIR/include",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETSYSBPFMAP_SOURCE_DIR/include",
+  ]
+
+  deps = [
+    "$INNERKITS_ROOT/netconnclient:net_conn_manager_if_static",
+    "$INNERKITS_ROOT/netstatsclient:net_stats_manager_if",
+    "$NETMANAGER_BASE_ROOT/services/netstatsmanager:net_stats_manager_static",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETSYSCONTROLLER_ROOT_DIR:netsys_controller",
+  ]
+
+  external_deps = [
+    "ability_runtime:ability_manager",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:wantagent_innerkits",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "data_share:datashare_consumer",
+    "distributed_notification_service:ans_innerkits",
+    "ffrt:libffrt",
+    "i18n:intl_util",
+    "ipc:ipc_core",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "sqlite:sqlite",
+    "time_service:time_client",
+    "os_account:os_account_innerkits"
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetStatsClient\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  if (netmanager_base_enable_traffic_statistic) {
+    external_deps += [
+      "cellular_data:tel_cellular_data_api",
+      "core_service:tel_core_service_api",
+      "state_registry:tel_state_registry_api",
+    ]
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+  }
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+ohos_unittest("net_stats_manager_test") {
+  module_out_path = "netmanager_base/netmanager_base/net_stats_manager_test"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$NETMANAGER_BASE_ROOT/test/security/netmanager_base_test_security.cpp",
+    "data_flow_statistics_test.cpp",
+    "net_push_stats_info_test.cpp",
+    "net_stats_callback_interface_test.cpp",
+    "net_stats_callback_ipc_test.cpp",
+    "net_stats_callback_stub_test.cpp",
+    "net_stats_callback_test.cpp",
+    "net_stats_client_test.cpp",
+    "net_stats_data_handler_test.cpp",
+    "net_stats_database_helper_test.cpp",
+    "net_stats_history_test.cpp",
+    "net_stats_info_test.cpp",
+    "net_stats_listener_test.cpp",
+    "net_stats_network_test.cpp",
+    "net_stats_service_proxy_test.cpp",
+    "net_stats_service_stub_test.cpp",
+    "net_stats_sqlite_statement_test.cpp",
+    "net_info_observer_test.cpp",
+  ]
+
+  include_dirs = [
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$INNERKITS_ROOT/netstatsclient/include",
+    "$NETCONNMANAGER_COMMON_DIR/include",
+    "$NETSTATSMANAGER_SOURCE_DIR/include/stub",
+    "$NETSTATSMANAGER_SOURCE_DIR/include",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETSYSBPFMAP_SOURCE_DIR/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include/manager",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys/wrapper",
+    "$NETMANAGER_BASE_ROOT/services/common/include",
+    "$NETMANAGER_BASE_ROOT/test/commonduplicatedcode",
+    "$NETMANAGER_BASE_ROOT/test/security",
+    "$NETMANAGER_BASE_ROOT/utils/bundle_utils/include",
+    "$NETMANAGER_BASE_ROOT/services/netstatslimitntf/include"
+  ]
+
+  deps = [
+    "$INNERKITS_ROOT/netstatsclient:net_stats_manager_if",
+    "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    "$NETMANAGER_BASE_ROOT/services/netstatsmanager:net_stats_manager_static",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:ability_manager",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:wantagent_innerkits",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_consumer",
+    "distributed_notification_service:ans_innerkits",
+    "ffrt:libffrt",
+    "i18n:intl_util",
+    "ipc:ipc_core",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "sqlite:sqlite",
+    "time_service:time_client",
+    "os_account:os_account_innerkits"
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetStatsClient\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "private = public",
+    "protected = public",
+  ]
+
+  if (netmanager_base_enable_traffic_statistic) {
+    external_deps += [
+      "cellular_data:tel_cellular_data_api",
+      "core_service:tel_core_service_api",
+      "state_registry:tel_state_registry_api",
+    ]
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+  }
+
+  if (netmanager_base_enable_netsys_access_policy_diag_listen) {
+    sources += [ "net_stats_notification_test.cpp" ]
+  }
+  
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+ohos_unittest("net_stats_cached_service_test") {
+  module_out_path = "netmanager_base/netmanager_base/net_stats_cached_service_test"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$NETMANAGER_BASE_ROOT/test/security/netmanager_base_test_security.cpp",
+    "net_stats_cached_test.cpp",
+    "net_stats_callback_test.cpp",
+    "net_stats_service_exception_test.cpp",
+    "net_stats_service_test.cpp",
+  ]
+
+  include_dirs = [
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$INNERKITS_ROOT/netstatsclient/include",
+    "$NETCONNMANAGER_COMMON_DIR/include",
+    "$NETSTATSMANAGER_SOURCE_DIR/include/stub",
+    "$NETSTATSMANAGER_SOURCE_DIR/include",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETSYSBPFMAP_SOURCE_DIR/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include/manager",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys/wrapper",
+    "$NETMANAGER_BASE_ROOT/services/common/include",
+    "$NETMANAGER_BASE_ROOT/test/commonduplicatedcode",
+    "$NETMANAGER_BASE_ROOT/test/security",
+    "$NETMANAGER_BASE_ROOT/utils/bundle_utils/include",
+  ]
+
+  deps = [
+    "$INNERKITS_ROOT/netstatsclient:net_stats_manager_if",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+    "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    "$NETMANAGER_BASE_ROOT/services/netstatsmanager:net_stats_manager_static",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:ability_manager",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:wantagent_innerkits",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_consumer",
+    "distributed_notification_service:ans_innerkits",
+    "ffrt:libffrt",
+    "i18n:intl_util",
+    "ipc:ipc_core",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "sqlite:sqlite",
+    "time_service:time_client",
+    "os_account:os_account_innerkits"
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetStatsClient\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "private = public",
+    "protected = public",
+  ]
+
+  if (netmanager_base_enable_traffic_statistic) {
+    external_deps += [
+      "cellular_data:tel_cellular_data_api",
+      "core_service:tel_core_service_api",
+      "state_registry:tel_state_registry_api",
+    ]
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+  }
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+ohos_unittest("net_stats_service_new_test") {
+  module_out_path = "netmanager_base/netmanager_base/net_stats_manager_test"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "net_stats_service_new_test.cpp",
+    "net_stats_calibrate_test.cpp",
+    "$NETMANAGER_BASE_ROOT/test/commonduplicatedcode/common_mock_netmanager_permission.cpp",
+  ]
+
+  include_dirs = [
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$INNERKITS_ROOT/netstatsclient/include",
+    "$NETCONNMANAGER_COMMON_DIR/include",
+    "$NETSTATSMANAGER_SOURCE_DIR/include/stub",
+    "$NETSTATSMANAGER_SOURCE_DIR/include",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETSYSBPFMAP_SOURCE_DIR/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include/manager",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys/wrapper",
+    "$NETMANAGER_BASE_ROOT/services/common/include",
+    "$NETMANAGER_BASE_ROOT/test/commonduplicatedcode",
+    "$NETMANAGER_BASE_ROOT/test/security",
+    "$NETMANAGER_BASE_ROOT/utils/bundle_utils/include",
+    "$NETMANAGER_BASE_ROOT/test/mock/telephony_mock/include",
+  ]
+
+  deps = [
+    "$INNERKITS_ROOT/netstatsclient:net_stats_manager_if",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+    "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    "$NETMANAGER_BASE_ROOT/services/netstatsmanager:net_stats_manager_static",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:ability_manager",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:wantagent_innerkits",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_consumer",
+    "distributed_notification_service:ans_innerkits",
+    "ffrt:libffrt",
+    "i18n:intl_util",
+    "ipc:ipc_core",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "sqlite:sqlite",
+    "time_service:time_client",
+    "os_account:os_account_innerkits",
+    "googletest:gmock_main"
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetStatsClient\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "private = public",
+    "protected = public",
+    "UNITTEST_FORBID_FFRT",
+    "NETMANAGER_TEST",
+  ]
+
+  if (netmanager_base_enable_traffic_statistic) {
+    external_deps += [
+      "cellular_data:tel_cellular_data_api",
+      "core_service:tel_core_service_api",
+      "state_registry:tel_state_registry_api",
+    ]
+    sources += [
+      "$NETMANAGER_BASE_ROOT/test/mock/telephony_mock/mock_core_service_manager.cpp",
+    ]
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+  }
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+ohos_unittest("net_stats_service_common_test") {
+  module_out_path = "netmanager_base/netmanager_base/net_stats_manager_test"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "net_stats_service_common_test.cpp",
+    "net_stats_utils_test.cpp"
+  ]
+
+  include_dirs = [
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$INNERKITS_ROOT/netstatsclient/include",
+    "$NETCONNMANAGER_COMMON_DIR/include",
+    "$NETSTATSMANAGER_SOURCE_DIR/include/stub",
+    "$NETSTATSMANAGER_SOURCE_DIR/include",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETSYSBPFMAP_SOURCE_DIR/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include/manager",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys/wrapper",
+    "$NETMANAGER_BASE_ROOT/services/common/include",
+    "$NETMANAGER_BASE_ROOT/test/commonduplicatedcode",
+    "$NETMANAGER_BASE_ROOT/test/security",
+    "$NETMANAGER_BASE_ROOT/utils/bundle_utils/include",
+  ]
+
+  deps = [
+    "$INNERKITS_ROOT/netstatsclient:net_stats_manager_if",
+    "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative:netsys_native_manager_static",
+    "$NETMANAGER_BASE_ROOT/services/netstatsmanager:net_stats_manager_static",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETSYSCONTROLLER_ROOT_DIR:netsys_controller",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:ability_manager",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:wantagent_innerkits",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_consumer",
+    "distributed_notification_service:ans_innerkits",
+    "ffrt:libffrt",
+    "i18n:intl_util",
+    "ipc:ipc_core",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "sqlite:sqlite",
+    "time_service:time_client",
+    "os_account:os_account_innerkits"
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetStatsClient\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "private = public",
+    "protected = public",
+  ]
+
+  if (netmanager_base_enable_traffic_statistic) {
+    external_deps += [
+      "cellular_data:tel_cellular_data_api",
+      "core_service:tel_core_service_api",
+      "state_registry:tel_state_registry_api",
+    ]
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+  }
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+
+ohos_unittest("net_stats_traffic_plan_service_test") {
+  module_out_path = "netmanager_base/netmanager_base/net_stats_traffic_plan_service_test"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$NETMANAGER_BASE_ROOT/test/security/netmanager_base_test_security.cpp",
+    "net_stats_traffic_plan_service_test.cpp",
+  ]
+
+  include_dirs = [
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$INNERKITS_ROOT/netstatsclient/include",
+    "$NETCONNMANAGER_COMMON_DIR/include",
+    "$NETSTATSMANAGER_SOURCE_DIR/include/stub",
+    "$NETSTATSMANAGER_SOURCE_DIR/include",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETSYSBPFMAP_SOURCE_DIR/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include/manager",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys/wrapper",
+    "$NETMANAGER_BASE_ROOT/services/common/include",
+    "$NETMANAGER_BASE_ROOT/test/commonduplicatedcode",
+    "$NETMANAGER_BASE_ROOT/test/security",
+    "$NETMANAGER_BASE_ROOT/utils/bundle_utils/include",
+    "$NETMANAGER_BASE_ROOT/test/mock/telephony_mock/include",
+  ]
+
+  deps = [
+    "$INNERKITS_ROOT/netstatsclient:net_stats_manager_if",
+    "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative:netsys_native_manager_static",
+    "$NETMANAGER_BASE_ROOT/services/netstatsmanager:net_stats_manager_static",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETSYSCONTROLLER_ROOT_DIR:netsys_controller",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:ability_manager",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:wantagent_innerkits",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_consumer",
+    "distributed_notification_service:ans_innerkits",
+    "ffrt:libffrt",
+    "i18n:intl_util",
+    "ipc:ipc_core",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "sqlite:sqlite",
+    "time_service:time_client",
+    "os_account:os_account_innerkits",
+    "googletest:gmock_main"
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetStatsClient\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "private = public",
+    "protected = public",
+  ]
+
+  if (netmanager_base_enable_traffic_statistic) {
+    external_deps += [
+      "cellular_data:tel_cellular_data_api",
+      "core_service:tel_core_service_api",
+      "state_registry:tel_state_registry_api",
+    ]
+    sources += [
+      "$NETMANAGER_BASE_ROOT/test/mock/telephony_mock/mock_core_service_manager.cpp",
+    ]
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+  }
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+ohos_unittest("net_stats_data_clone_test") {
+  module_out_path = "netmanager_base/netmanager_base/net_stats_data_clone_test"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$NETMANAGER_BASE_ROOT/test/security/netmanager_base_test_security.cpp",
+    "net_stats_data_clone_test.cpp",
+  ]
+
+  include_dirs = [
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$INNERKITS_ROOT/netstatsclient/include",
+    "$NETCONNMANAGER_COMMON_DIR/include",
+    "$NETSTATSMANAGER_SOURCE_DIR/include/stub",
+    "$NETSTATSMANAGER_SOURCE_DIR/include",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETSYSBPFMAP_SOURCE_DIR/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include/manager",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys/wrapper",
+    "$NETMANAGER_BASE_ROOT/services/common/include",
+    "$NETMANAGER_BASE_ROOT/test/commonduplicatedcode",
+    "$NETMANAGER_BASE_ROOT/test/security",
+    "$NETMANAGER_BASE_ROOT/utils/bundle_utils/include",
+  ]
+
+  deps = [
+    "$INNERKITS_ROOT/netstatsclient:net_stats_manager_if",
+    "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative:netsys_native_manager_static",
+    "$NETMANAGER_BASE_ROOT/services/netstatsmanager:net_stats_manager_static",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETSYSCONTROLLER_ROOT_DIR:netsys_controller",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:ability_manager",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:wantagent_innerkits",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_consumer",
+    "distributed_notification_service:ans_innerkits",
+    "ffrt:libffrt",
+    "i18n:intl_util",
+    "ipc:ipc_core",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "sqlite:sqlite",
+    "time_service:time_client",
+    "os_account:os_account_innerkits",
+    "googletest:gmock_main"
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetStatsClient\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "private = public",
+    "protected = public",
+  ]
+
+  if (netmanager_base_enable_traffic_statistic) {
+    external_deps += [
+      "cellular_data:tel_cellular_data_api",
+      "core_service:tel_core_service_api",
+      "state_registry:tel_state_registry_api",
+    ]
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+  }
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

@@ -1,0 +1,41 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+group("unittest") {
+    testonly = true
+    deps = [
+        "unittest/net_conn_manager_test:net_conn_manager_test",
+        "unittest/net_conn_multi_test:net_conn_multi_test",
+        "unittest/net_conn_multi_test:net_conn_multi_vnic_test",
+        "unittest/net_conn_service_regional_test:net_conn_service_regional_test",
+        "unittest/net_conn_service_test:net_conn_service_test",
+        "unittest/net_factoryreset_callback_test:net_factoryreset_callback_test",
+        "unittest/net_info_test:net_info_test",
+        "unittest/net_supplier_test:net_supplier_test",
+        "unittest/netmgr_distributed_test:netmgr_distributed_test",
+    ]
+
+    if(netmanager_base_enable_pac_proxy){
+        deps += [
+            "unittest/net_pac_manager_test:net_client_pac_file_url_test",
+            "unittest/net_pac_manager_test:net_pac_manager_test",
+            "unittest/pac_http_test:local_proxy_server_test",
+            "unittest/pac_http_test:pac_http_test",
+            "unittest/pac_http_test:proxy_switch_mode_test",
+            "unittest/pac_http_test:proxy_switch_server_tool",
+        ]
+    }
+}

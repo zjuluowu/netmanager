@@ -1,0 +1,84 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{
+  global:
+    extern "C++" {
+      VTT?for?OHOS::NetManagerStandard::NetQuotaPolicy;
+      vtable?for?OHOS::NetManagerStandard::NetQuotaPolicy;
+      "OHOS::NetManagerStandard::NetPolicyCallbackStub::~NetPolicyCallbackStub()";
+      "OHOS::NetManagerStandard::NetPolicyCallbackStub::OnRemoteRequest(unsigned int, OHOS::MessageParcel&, OHOS::MessageParcel&, OHOS::MessageOption&)";
+      "OHOS::NetManagerStandard::NetPolicyCallbackStub::NetStrategySwitch(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, bool)";
+      "non-virtual thunk to OHOS::NetManagerStandard::NetPolicyCallbackStub::NetStrategySwitch(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, bool)";
+      "OHOS::NetManagerStandard::NetPolicyCallbackStub::~NetPolicyCallbackStub()";
+      "OHOS::NetManagerStandard::NetPolicyCallbackStub::NetUidPolicyChange(unsigned int, unsigned int)";
+      "OHOS::NetManagerStandard::NetPolicyCallbackStub::NetUidRuleChange(unsigned int, unsigned int)";
+      "OHOS::NetManagerStandard::NetPolicyCallbackStub::NetQuotaPolicyChange(std::__h::vector<OHOS::NetManagerStandard::NetQuotaPolicy, std::__h::allocator<OHOS::NetManagerStandard::NetQuotaPolicy>> const&)";
+      "OHOS::NetManagerStandard::NetPolicyCallbackStub::NetMeteredIfacesChange(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>>&)";
+      "OHOS::NetManagerStandard::NetPolicyCallbackStub::NetBackgroundPolicyChange(bool)";
+      "non-virtual thunk to OHOS::NetManagerStandard::NetPolicyCallbackStub::~NetPolicyCallbackStub()";
+      "non-virtual thunk to OHOS::NetManagerStandard::NetPolicyCallbackStub::NetUidPolicyChange(unsigned int, unsigned int)";
+      "non-virtual thunk to OHOS::NetManagerStandard::NetPolicyCallbackStub::NetUidRuleChange(unsigned int, unsigned int)";
+      "non-virtual thunk to OHOS::NetManagerStandard::NetPolicyCallbackStub::NetQuotaPolicyChange(std::__h::vector<OHOS::NetManagerStandard::NetQuotaPolicy, std::__h::allocator<OHOS::NetManagerStandard::NetQuotaPolicy>> const&)";
+      "non-virtual thunk to OHOS::NetManagerStandard::NetPolicyCallbackStub::NetMeteredIfacesChange(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>>&)";
+      "non-virtual thunk to OHOS::NetManagerStandard::NetPolicyCallbackStub::NetBackgroundPolicyChange(bool)";
+      "virtual thunk to OHOS::NetManagerStandard::NetPolicyCallbackStub::~NetPolicyCallbackStub()";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetPolicyByUid(unsigned int, unsigned int)";
+      "OHOS::NetManagerStandard::NetPolicyClient::NetPolicyClient()";
+      "OHOS::NetManagerStandard::NetPolicyClient::GetInstance()";
+      "OHOS::NetManagerStandard::NetPolicyClient::GetPolicyByUid(unsigned int, unsigned int&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::GetUidsByPolicy(unsigned int, std::__h::vector<unsigned int, std::__h::allocator<unsigned int>>&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetBackgroundPolicy(bool)";
+      "OHOS::NetManagerStandard::NetPolicyClient::GetBackgroundPolicy(bool&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::GetNetQuotaPolicies(std::__h::vector<OHOS::NetManagerStandard::NetQuotaPolicy, std::__h::allocator<OHOS::NetManagerStandard::NetQuotaPolicy>>&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetNetQuotaPolicies(std::__h::vector<OHOS::NetManagerStandard::NetQuotaPolicy, std::__h::allocator<OHOS::NetManagerStandard::NetQuotaPolicy>> const&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::ResetPolicies(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::IsUidNetAllowed(unsigned int, bool, bool&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::IsUidNetAllowed(unsigned int, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, bool&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetDeviceIdleTrustlist(unsigned int, bool)";
+      "OHOS::NetManagerStandard::NetPolicyClient::GetDeviceIdleTrustlist(std::__h::vector<unsigned int, std::__h::allocator<unsigned int>>&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::GetBackgroundPolicyByUid(unsigned int, unsigned int&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::UpdateRemindPolicy(int, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned int)";
+      "OHOS::NetManagerStandard::NetPolrooticyClient::~NetPolicyClient()";
+      "OHOS::NetManagerStandard::NetPolicyCallbackStub::NetPolicyCallbackStub()";
+      "OHOS::NetManagerStandard::NetPolicyClient::RegisterNetPolicyCallback(OHOS::sptr<OHOS::NetManagerStandard::INetPolicyCallback> const&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::UnregisterNetPolicyCallback(OHOS::sptr<OHOS::NetManagerStandard::INetPolicyCallback> const&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::~NetPolicyClient()";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetPowerSaveTrustlist(unsigned int, bool)";
+      "OHOS::NetManagerStandard::NetPolicyClient::GetPowerSaveTrustlist(std::__h::vector<unsigned int, std::__h::allocator<unsigned int>>&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetDeviceIdlePolicy(bool)";
+      "OHOS::NetManagerStandard::NetPolicyClient::IsUidNetAccess(unsigned int, bool, bool&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::IsUidNetAccess(unsigned int, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, bool&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetFactoryPolicy(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetSnoozePolicy(signed char, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetIdleTrustlist(unsigned int, bool)";
+      "OHOS::NetManagerStandard::NetPolicyClient::GetIdleTrustlist(std::__h::vector<unsigned int, std::__h::allocator<unsigned int>>&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetDeviceIdleTrustlist(std::__h::vector<unsigned int, std::__h::allocator<unsigned int>> const&, bool)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetPowerSaveTrustlist(std::__h::vector<unsigned int, std::__h::allocator<unsigned int>> const&, bool)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetPowerSavePolicy(bool)";
+      "OHOS::NetManagerStandard::NetPolicyClient::CheckPermission()";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetNetworkAccessPolicy(unsigned int, OHOS::NetManagerStandard::NetworkAccessPolicy, bool)";
+      "OHOS::NetManagerStandard::NetPolicyClient::GetNetworkAccessPolicy(OHOS::NetManagerStandard::AccessPolicyParameter, OHOS::NetManagerStandard::AccessPolicySave&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::GetSelfNetworkAccessPolicy(OHOS::NetManagerStandard::NetAccessPolicy&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::NotifyNetAccessPolicyDiag(unsigned int)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetNicTrafficAllowed(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&, bool)";
+      "OHOS::NetManagerStandard::NetPolicyClient::OnRemoteDied(OHOS::wptr<OHOS::IRemoteObject> const&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetInternetAccessByIpForWifiShare(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned char, bool, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetIdleDenyPolicy(bool)";
+      "OHOS::NetManagerStandard::NetPolicyClient::SetUidsDeniedListChain(std::__h::vector<unsigned int, std::__h::allocator<unsigned int>> const&, bool)";
+      "OHOS::NetManagerStandard::NetPolicyClient::AddNetworkAccessPolicy(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
+      "OHOS::NetManagerStandard::NetPolicyClient::RemoveNetworkAccessPolicy(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
+    };
+  local:
+   *;
+};
