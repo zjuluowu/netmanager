@@ -86,7 +86,7 @@ RAM 500 KB，`netstack` 声明 ROM 3 MB、RAM 5 MB；这些字段不能视为当
 | `sa_profile/` | SA 1161、8300、8301、8400 等 |
 
 `communication_netmanager_ext/BUILD.gn:25-130` 对各扩展组已有独立 `if(feature)`
-控制，裁剪基础明显优于 base。
+控制，能够可靠地缩小扩展构建闭包，裁剪基础明显优于 base。
 
 ### 2.4 netstack
 
@@ -219,7 +219,7 @@ Netsys IPC 面由 `INetsysService` 定义，包含 resolver cache、路由、默
 - Ethernet、Sharing、mDNS、VPN、VPN Extension 默认 `true`；
 - Firewall、SysVPN、Wearable Distributed Net、NetworkSlice 默认 `false`；
 - Wi-Fi、Bluetooth、USB、Battery 支持根据 `global_parts_info` 自动开启
-  （同文件 `:99-126`）。
+  （`communication_netmanager_ext/netmanager_ext_config.gni:99-126`）。
 
 顶层 `communication_netmanager_ext/BUILD.gn:25-130` 已按上述 feature 包围 service、
 InnerKit、NAPI 和配置目标。因此关闭对应 feature 可可靠缩小扩展构建闭包。
