@@ -1,0 +1,62 @@
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+ohos_executable("test_netsys_native_manager") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "network_route.cpp",
+    "resolver_config.cpp",
+    "test.cpp",
+    "test_notify_callback.cpp",
+  ]
+
+  include_dirs = [
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR",
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$NETMANAGER_BASE_ROOT/utils/common_utils/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys",
+  ]
+
+  deps = [ "$NETMANAGER_BASE_ROOT/services/netmanagernative:netsys_native_manager_static" ]
+
+  external_deps = [
+    "ability_base:want",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "ipc:ipc_core",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  defines = [
+    "NETMGRNATIVE_LOG_TAG = \"NetsysNativeService\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

@@ -1,0 +1,71 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/config/features.gni")
+
+import("//build/test.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+ohos_fuzztest("IsDeadFlowResetTargetBundleFuzzTest") {
+  module_out_path = fuzz_test_path
+  fuzz_config_file =
+      "$NETMANAGER_BASE_ROOT/test/fuzztest/isdeadflowresettargetbundle_fuzzer"
+
+  include_dirs = [
+    "$INNERKITS_ROOT/include",
+    "$INNERKITS_ROOT/netconnclient/include",
+    "$INNERKITS_ROOT/netconnclient/include/proxy",
+    "$NETCONNMANAGER_SOURCE_DIR/include",
+    "$NETCONNMANAGER_SOURCE_DIR/include/stub",
+    "$NETMANAGER_BASE_ROOT/services/common/include",
+    "$NETMANAGER_BASE_ROOT/test/netconnmanager/mock",
+  ]
+
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+    "-flto",
+    "-fvisibility=hidden",
+  ]
+
+  ldflags = [ "-flto" ]
+
+  sources = [ "is_dead_flow_reset_target_bundle_fuzzer.cpp" ]
+
+  deps = [
+    "$INNERKITS_ROOT/netconnclient:net_conn_manager_if_static",
+    "$NETCONNMANAGER_SOURCE_DIR:net_conn_manager_static",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+  ]
+
+  defines = [
+    "HI_LOG_ENABLE",
+    "DH_LOG_TAG=\"IsDeadFlowResetTargetBundleFuzzTest\"",
+    "LOG_DOMAIN=0xD004100",
+  ]
+
+  external_deps = [
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+}
+
+group("fuzztest") {
+  testonly = true
+
+  deps = [ ":IsDeadFlowResetTargetBundleFuzzTest" ]
+}

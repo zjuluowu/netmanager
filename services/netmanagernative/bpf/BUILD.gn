@@ -1,0 +1,115 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+config("netsys_bpf_utils_config") {
+  include_dirs = [
+    "include",
+    "$NETMANAGER_BASE_ROOT/interfaces/innerkits/include",
+    "$NETMANAGER_BASE_ROOT/interfaces/innerkits/netmanagernative/include",
+    "$NETMANAGER_BASE_ROOT/interfaces/innerkits/netstatsclient/include",
+    "$NETMANAGER_BASE_ROOT/utils/common_utils/include",
+    "$NETPOLICYMANAGER_SOURCE_DIR/include",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative/include",
+  ]
+  if (netmanager_base_enable_feature_net_firewall) {
+    defines = [ "FEATURE_NET_FIREWALL_ENABLE" ]
+  }
+}
+
+ohos_bpf("netsys") {
+  sources = [ "src/netsys.c" ]
+
+  include_dirs = [ "include" ]
+  if(ohos_indep_compiler_enable){
+    include_dirs += [ "//binarys/third_party/libbpf/innerapis/libbpf/includes" ]
+  }
+  defines = []
+
+  if (netmanager_base_enable_feature_net_firewall) {
+    defines += [
+      "FEATURE_NET_FIREWALL_ENABLE",
+      "NET_FIREWALL_DEBUG=0",
+      "NET_FIREWALL_DEBUG_TUPLE=0",
+    ]
+  }
+
+  if (netmanager_base_support_ebpf_memory_miniaturization) {
+    defines += [ "SUPPORT_EBPF_MEM_MIN" ]
+  }
+  defines += [ "__MUSL__" ]
+  subsystem_name = "communication"
+  part_name = "netmanager_base"
+}
+
+ohos_shared_library("netsys_bpf_utils") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    boundary_sanitize = true
+    ubsan = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$NETSTATSMANAGER_INNERKITS_SOURCE_DIR/src/net_stats_info.cpp",
+    "src/bpf_loader.cpp",
+    "src/bpf_ring_buffer.cpp",
+    "src/bpf_stats.cpp",
+  ]
+
+  cflags = common_cflags
+
+  cflags_cc = common_cflags
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetSysBpf\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "elfio:elfio",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "libbpf:libbpf",
+  ]
+  use_exceptions = true
+  deps = [ "$INNERKITS_ROOT/netpolicyclient:net_policy_manager_if" ]
+
+  public_configs = [ ":netsys_bpf_utils_config" ]
+  if (netmanager_base_enable_feature_net_firewall) {
+    public_configs += [ "$NETMANAGER_BASE_ROOT/resource:coverage_flags" ]
+    sources += [
+      "src/bitmap_manager.cpp",
+      "src/bpf_netfirewall.cpp",
+    ]
+
+    deps += [ "$INNERKITS_ROOT/netmanagernative:net_native_parcel" ]
+
+    external_deps += [
+      "ipc:ipc_core",
+      "safwk:system_ability_fwk",
+      "samgr:samgr_proxy",
+    ]
+  }
+
+  innerapi_tags = [ "platformsdk_indirect" ]
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

@@ -1,0 +1,139 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+ohos_unittest("netsys_dnsresolv_test") {
+  module_out_path = "netmanager_base/netmanager_base/dnsresolv_test"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "dns_proxy_request_socket_test.cpp",
+    "dns_quality_diag_test.cpp",
+    "dns_quality_event_handler_test.cpp",
+    "dns_resolv_listen_test.cpp",
+    "net_dns_result_callback_proxy_test.cpp",
+  ]
+
+  include_dirs = [
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR",
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include/manager",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys",
+    "$FWMARK_CLIENT_DIR/include",
+    "$NETMANAGERNATIVE_ROOT/include",
+    "$NETMANAGERNATIVE_ROOT/include/netsys/wrapper",
+    "$NETMANAGER_BASE_ROOT/services/common/include",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative/bpf/include",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative/src/netsys",
+    "$NETMANAGER_BASE_ROOT/test/commonduplicatedcode",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETMANAGERNATIVE_ROOT/src/netsys/dnsresolv",
+    "$INNERKITS_ROOT/netconnclient/include",
+    "$INNERKITS_ROOT/netconnclient/include/proxy",
+  ]
+
+  deps = [
+    "$FWMARK_CLIENT_DIR:fwmark_client",
+    "$NETMANAGERNATIVE_ROOT:netsys_client",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative:netsys_native_manager_static",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative/bpf:netsys_bpf_utils",
+    "$NETMANAGER_BASE_ROOT/services/netsyscontroller:netsys_controller_static",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "dhcp:dhcp_sdk",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "googletest:gmock_main",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  defines = [
+    "NETMGRNATIVE_LOG_TAG = \"NetsysNativeService\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+ohos_unittest("netsys_dnsresolv_mock_test") {
+  module_out_path = "netmanager_base/netmanager_base/dnsresolv_test"
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "../mock/src/parcel.cpp",
+    "netsys_net_dns_result_data_test.cpp",
+  ]
+
+  sources += [
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/dnsresolv/netsys_net_dns_result_data.cpp",
+  ]
+
+  include_dirs = [
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$INNERKITS_ROOT/netconnclient/include",
+    "$INNERKITS_ROOT/netconnclient/include/proxy",
+    "$NETMANAGER_BASE_ROOT/test/commonduplicatedcode",
+    "$NETMANAGER_BASE_ROOT/test/netmanagernative/unittest/mock/include",
+    "$NETMANAGERNATIVE_ROOT/include/netsys",
+  ]
+
+  deps = [
+    "$NETMANAGERNATIVE_ROOT:netsys_client",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gmock_main",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  defines = [
+    "NETMGRNATIVE_LOG_TAG = \"NetsysNativeService\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

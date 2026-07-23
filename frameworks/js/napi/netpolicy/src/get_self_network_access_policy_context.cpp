@@ -1,0 +1,48 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "get_self_network_access_policy_context.h"
+
+#include "constant.h"
+#include "napi_constant.h"
+#include "napi_utils.h"
+#include "netmanager_base_log.h"
+
+namespace OHOS::NetManagerStandard {
+
+GetSelfNetworkAccessPolicyContext::GetSelfNetworkAccessPolicyContext(
+    napi_env env, std::shared_ptr<EventManager>& manager): BaseContext(env, manager)
+{
+    SetReleaseVersion(API_VERSION_26);
+}
+
+void GetSelfNetworkAccessPolicyContext::ParseParams(napi_value *params, size_t paramsCount)
+{
+    if (!CheckParamsType(params, paramsCount)) {
+        NETMANAGER_BASE_LOGE("check params type failed");
+        SetNeedThrowException(true);
+        SetErrorCode(NETMANAGER_ERR_PARAMETER_ERROR);
+        return;
+    }
+
+    SetParseOK(true);
+}
+
+bool GetSelfNetworkAccessPolicyContext::CheckParamsType(napi_value *params, size_t paramsCount)
+{
+    return paramsCount == PARAM_NONE;
+}
+
+} // namespace OHOS::NetManagerStandard

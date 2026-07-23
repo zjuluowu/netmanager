@@ -1,0 +1,355 @@
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+config("netsys_native_manager_config") {
+  include_dirs = [
+    "$INNERKITS_ROOT/include",
+    "$NETMANAGER_BASE_ROOT/services/common/include",
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "include",
+    "include/manager",
+    "include/netsys",
+    "include/netsys/wrapper",
+    "$FWMARK_CLIENT_DIR/include",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative/bpf/include",
+    "$NETCONNMANAGER_SOURCE_DIR/include",
+    "$NETCONNMANAGER_SOURCE_DIR/include/stub",
+    "$INNERKITS_ROOT/netconnclient/include/proxy",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative/include/netsys",
+  ]
+
+  defines = []
+  if (netmanager_base_enable_feature_net_firewall) {
+    defines += [ "FEATURE_NET_FIREWALL_ENABLE" ]
+  }
+
+  if (netmanager_base_enable_feature_wearable_distributed_net) {
+    defines += [ "FEATURE_WEARABLE_DISTRIBUTED_NET_ENABLE" ]
+  }
+
+  if (is_emulator) {
+    defines += [ "EMLULATOR_PLATFORM" ]
+  }
+
+  if (netmanager_base_enable_public_dns_server && !is_emulator) {
+    defines += [ "ENABLE_PUBLIC_DNS_SERVER" ]
+  }
+
+  if (netmanager_base_enable_feature_sysvpn) {
+    defines += [ "SUPPORT_SYSVPN" ]
+  }
+
+  if (netmanager_base_feature_enterprise_route_custom) {
+    defines += [ "FEATURE_ENTERPRISE_ROUTE_CUSTOM" ]
+  }
+}
+
+netsys_native_manager_sources = [
+  "src/notify_callback_proxy.cpp",
+  "src/dhcp_controller.cpp",
+  "src/manager/bandwidth_manager.cpp",
+  "src/manager/clat_manager.cpp",
+  "src/manager/conn_manager.cpp",
+  "src/manager/distributed_manager.cpp",
+  "src/manager/dns_manager.cpp",
+  "src/manager/firewall_manager.cpp",
+  "src/manager/interface_manager.cpp",
+  "src/manager/route_manager.cpp",
+  "src/manager/sharing_manager.cpp",
+  "src/manager/traffic_manager.cpp",
+  "src/manager/vnic_manager.cpp",
+  "src/manager/vpn_manager.cpp",
+  "src/manager/mptcp_manager.cpp",
+  "src/net_diag_callback_proxy.cpp",
+  "src/netsys/clat_utils.cpp",
+  "src/netsys/clatd.cpp",
+  "src/netsys/clatd_packet_converter.cpp",
+  "src/netsys/dnsresolv/dns_param_cache.cpp",
+  "src/netsys/dnsresolv/dns_proxy_listen.cpp",
+  "src/netsys/dnsresolv/dns_proxy_request_socket.cpp",
+  "src/netsys/dnsresolv/dns_quality_diag.cpp",
+  "src/netsys/dnsresolv/dns_quality_event_handler.cpp",
+  "src/netsys/dnsresolv/dns_resolv_config.cpp",
+  "src/netsys/dnsresolv/dns_resolv_listen.cpp",
+  "src/netsys/dnsresolv/net_dns_result_callback_proxy.cpp",
+  "src/netsys/fwmark_network.cpp",
+  "src/netsys/iptables_wrapper.cpp",
+  "src/netsys/local_network.cpp",
+  "src/netsys/net_diag_wrapper.cpp",
+  "src/netsys/net_manager_native.cpp",
+  "src/netsys/netlink_msg.cpp",
+  "src/netsys/netlink_socket.cpp",
+  "src/netsys/netlink_socket_diag.cpp",
+  "src/netsys/netsys_network.cpp",
+  "src/netsys/netsys_udp_transfer.cpp",
+  "src/netsys/physical_network.cpp",
+  "src/netsys/virtual_network.cpp",
+  "src/netsys/wrapper/data_receiver.cpp",
+  "src/netsys/wrapper/netlink_manager.cpp",
+  "src/netsys/wrapper/netsys_event_message.cpp",
+  "src/netsys/wrapper/wrapper_decoder.cpp",
+  "src/netsys/wrapper/wrapper_distributor.cpp",
+  "src/netsys/wrapper/wrapper_listener.cpp",
+  "src/netsys_native_service.cpp",
+  "src/netsys_native_service_stub.cpp",
+  "src/netsys_traffic_callback_proxy.cpp",
+]
+
+netsys_native_manager_deps = [
+  "$FWMARK_CLIENT_DIR:fwmark_client",
+  "$INNERKITS_ROOT/netconnclient:net_conn_manager_if",
+  "$INNERKITS_ROOT/netmanagernative:net_native_parcel",
+  "$NETMANAGERNATIVE_ROOT:netsys_client",
+  "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+  "bpf:netsys",
+  "bpf:netsys_bpf_utils",
+]
+
+if (netmanager_base_enable_feature_net_firewall) {
+  netsys_native_manager_sources += [
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR/netfirewall_callback_proxy.cpp",
+    "$NETSYSNATIVE_SOURCE_DIR/src/netfirewall_callback_stub.cpp",
+  ]
+}
+
+if (netmanager_base_enable_feature_wearable_distributed_net) {
+  netsys_native_manager_sources +=
+      [ "src/manager/wearable_distributed_net_manager.cpp" ]
+}
+
+ohos_shared_library("netsys_native_manager") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  configs = [ ":netsys_native_manager_config" ]
+
+  cflags = common_cflags + [
+    "-fvisibility=hidden",
+  ]
+
+  cflags_cc = common_cflags + [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+  ]
+
+  ldflags = [
+    "-Wl,--exclude-libs=ALL",
+    "-Wl,--gc-sections",
+  ]
+
+  sources = netsys_native_manager_sources
+  if (netmanager_base_enable_feature_sysvpn) {
+    cflags += [ "-DSUPPORT_SYSVPN" ]
+    cflags_cc += [ "-DSUPPORT_SYSVPN" ]
+    sources += [
+        "src/netsys/system_vpn_wrapper.cpp",
+        "src/manager/multi_vpn_manager.cpp",
+    ]
+  }
+  deps = netsys_native_manager_deps
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetsysNativeService\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "NETSYS_CONFIG_DEBUG=0",
+    "DNS_CONFIG_DEBUG=0",
+    "NETSYS_DNS_MONITOR=0",
+    "IPTABLES_CONFIG_PATH = \"/system/etc/wearable_distributed_net_forward.json\"",
+  ]
+
+  external_deps = [
+    "cJSON:cjson",
+    "c_utils:utils",
+    "dhcp:dhcp_sdk",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "iptables:iptables",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  if (build_selinux) {
+    external_deps += [ "selinux:libselinux" ]
+    defines += [ "USE_SELINUX" ]
+  }
+
+  if (netmanager_base_enable_netsys_access_policy_diag_listen) {
+    defines += [ "ENABLE_NETSYS_ACCESS_POLICY_DIAG_LISTEN" ]
+  }
+
+  public_configs = [ "$NETMANAGER_BASE_ROOT/utils:netmgr_common_config" ]
+
+  if (enable_sys_func) {
+    defines += [ "SYS_FUNC" ]
+  }
+
+  if (enable_server_support_ipv6) {
+    defines += [ "SERVER_SUPPORT_IPV6" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.resourceschedule_qos_manager)) {
+    defines += [ "QOS_MANAGER_ENABLE" ]
+    external_deps += [ "qos_manager:qos" ]
+    external_deps += [ "qos_manager:concurrent_task_client" ]
+  }
+
+  part_name = "netmanager_base"
+  innerapi_tags = [ "platformsdk_indirect" ]
+  subsystem_name = "communication"
+}
+
+ohos_static_library("netsys_native_manager_static") {
+  testonly = true
+
+  sanitize = {
+    debug = false
+  }
+
+  sources = netsys_native_manager_sources
+
+  configs = [ ":netsys_native_manager_config" ]
+
+  deps = netsys_native_manager_deps
+
+  if (netmanager_base_enable_feature_sysvpn) {
+    cflags = [ "-DSUPPORT_SYSVPN" ]
+    cflags_cc = [ "-DSUPPORT_SYSVPN" ]
+    sources += [
+        "src/netsys/system_vpn_wrapper.cpp",
+        "src/manager/multi_vpn_manager.cpp",
+    ]
+  }
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "dhcp:dhcp_sdk",
+    "eventhandler:libeventhandler",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetsysNativeService\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "NETSYS_CONFIG_DEBUG=0",
+    "DNS_CONFIG_DEBUG=0",
+    "UNITTEST_FORBID_FFRT=1",
+    "NETMANAGER_TEST",
+    "IPTABLES_CONFIG_PATH = \"/system/etc/wearable_distributed_net_forward.json\"",
+  ]
+
+  if (build_selinux) {
+    external_deps += [ "selinux:libselinux" ]
+    defines += [ "USE_SELINUX" ]
+  }
+
+  if (netmanager_base_enable_netsys_access_policy_diag_listen) {
+    defines += [ "ENABLE_NETSYS_ACCESS_POLICY_DIAG_LISTEN" ]
+  }
+
+  public_configs = [ "$NETMANAGER_BASE_ROOT/utils:netmgr_common_config" ]
+
+  if (enable_sys_func) {
+    defines += [ "SYS_FUNC" ]
+  }
+
+  if (enable_server_support_ipv6) {
+    defines += [ "SERVER_SUPPORT_IPV6" ]
+  }
+
+  external_deps += [
+    "ffrt:libffrt",
+    "hilog:libhilog",
+  ]
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.resourceschedule_qos_manager)) {
+    defines += [ "QOS_MANAGER_ENABLE" ]
+    external_deps += [ "qos_manager:qos" ]
+    external_deps += [ "qos_manager:concurrent_task_client" ]
+  }
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+config("netsys_client_public_config") {
+  include_dirs = [ "include/netsys" ]
+}
+
+ohos_shared_library("netsys_client") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    boundary_sanitize = true
+    all_ubsan = true
+    debug = false
+  }
+
+  public_configs = [ ":netsys_client_public_config" ]
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "src/netsys/netsys_client.c",
+    "src/netsys/netsys_tcp_client.c",
+  ]
+
+  include_dirs = [
+    "$NETMANAGER_BASE_ROOT/utils/common_utils/include",
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$NETMANAGERNATIVE_ROOT/include/netsys",
+    "$FWMARK_CLIENT_DIR/include",
+  ]
+
+  cflags = common_cflags
+
+  cflags_cc = common_cflags
+
+  deps = [ "$FWMARK_CLIENT_DIR:fwmark_client" ]
+
+  external_deps = [
+    "cJSON:cjson",
+    "c_utils:utils",
+    "hilog:libhilog",
+  ]
+
+  defines = [
+    "NETSYS_CONFIG_DEBUG=0",
+    "NETSYS_CLIENT_DEBUG=0",
+    "NETMGR_LOG_TAG = \"NetsysNativeService\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  innerapi_tags = [ "platformsdk_indirect" ]
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

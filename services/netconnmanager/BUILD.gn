@@ -1,0 +1,288 @@
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+config("net_conn_manager_config") {
+  include_dirs = [
+    "include",
+    "include/stub",
+    "$INNERKITS_ROOT/netconnclient/include/proxy",
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$NETCONNMANAGER_COMMON_DIR/include",
+    "$NETPOLICYMANAGER_SOURCE_DIR/include",
+    "$NETPOLICYMANAGER_SOURCE_DIR/include/stub",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative/fwmarkclient/include",
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$NETMANAGER_BASE_ROOT/utils/data_share/include",
+  ]
+
+  if(netmanager_base_enable_pac_proxy){
+    defines = [ "NETMANAGER_ENABLE_PAC_PROXY" ]
+  }
+}
+
+ohos_shared_library("net_conn_manager") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "$NETCONNMANAGER_COMMON_DIR/src/route_utils.cpp",
+    "src/dns_result_call_back.cpp",
+    "src/nat464_service.cpp",
+    "src/net_activate.cpp",
+    "src/net_caps.cpp",
+    "src/net_conn_callback_proxy_wrapper.cpp",
+    "src/net_conn_event_handler.cpp",
+    "src/net_conn_service.cpp",
+    "src/net_conn_service_iface.cpp",
+    "src/net_dns_resolve.cpp",
+    "src/net_dual_stack_probe.cpp",
+    "src/net_factoryreset_callback.cpp",
+    "src/net_http_probe.cpp",
+    "src/net_http_probe_result.cpp",
+    "src/net_http_proxy_tracker.cpp",
+    "src/net_monitor.cpp",
+    "src/net_proxy_userinfo.cpp",
+    "src/net_supplier.cpp",
+    "src/network.cpp",
+    "src/probe_thread.cpp",
+    "src/net_trace_route_probe.cpp",
+    "src/stub/net_conn_callback_proxy.cpp",
+    "src/stub/refresh_http_proxy_callback_proxy.cpp",
+    "src/stub/net_conn_service_stub.cpp",
+    "src/stub/net_detection_callback_proxy.cpp",
+    "src/stub/net_factoryreset_callback_proxy.cpp",
+    "src/stub/net_interface_callback_proxy.cpp",
+    "src/stub/net_supplier_callback_proxy.cpp",
+  ]
+  use_exceptions = true
+
+  public_configs = [ ":net_conn_manager_config" ]
+
+  deps = [
+    "$INNERKITS_ROOT/netpolicyclient:net_policy_manager_if",
+    "$INNERKITS_ROOT/netstatsclient:net_stats_manager_if",
+    "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative/fwmarkclient:fwmark_client",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETMANAGER_BASE_ROOT/utils:net_data_share",
+    "$NETSYSCONTROLLER_ROOT_DIR:netsys_controller",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+  ]
+
+  cflags = common_cflags + [
+    "-fvisibility=hidden",
+  ]
+
+  cflags_cc = common_cflags + [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+  ]
+
+  ldflags = [
+    "-Wl,--exclude-libs=ALL",
+    "-Wl,--gc-sections",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_base:zuri",
+    "ability_runtime:app_manager",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "curl:curl_shared",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hisysevent:libhisysevent",
+    "hitrace:hitrace_meter",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "os_account:os_account_innerkits",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "jerryscript:jerryscript_shared_not_lite",
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetConnManager\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  if(netmanager_base_enable_pac_proxy){
+    external_deps += [ "jerryscript:jerryscript_shared_not_lite" ]
+    sources += [
+      "src/net_pac_local_proxy_server.cpp",
+      "src/net_pac_manager.cpp",
+      "src/pac_functions.cpp",
+    ]
+  }
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  if (enable_sys_func) {
+    defines += [ "SYS_FUNC" ]
+  }
+
+  if (netmanager_base_enable_feature_wearable_distributed_net) {
+    defines += [ "FEATURE_WEARABLE_DISTRIBUTED_NET_ENABLE" ]
+  }
+
+  if (netmanager_base_feature_support_powermanager) {
+    defines += [ "FEATURE_SUPPORT_POWERMANAGER" ]
+  }
+
+  if (netmanager_base_enable_set_app_frozened) {
+    defines += [ "ENABLE_SET_APP_FROZENED" ]
+  }
+
+  if (netmanager_base_enable_feature_net_firewall) {
+    defines += [ "FEATURE_NET_FIREWALL_ENABLE" ]
+  }
+
+  if (netmanager_base_feature_enterprise_route_custom) {
+    defines += [ "FEATURE_ENTERPRISE_ROUTE_CUSTOM" ]
+  }
+
+  if (netmanager_base_update_netcap) {
+    defines += [ "FEATURE_UPDATE_NETCAP" ]
+  }
+
+  if (factory == true) {
+    defines += ["CONFIG_FACTORY_MODE"]
+  }
+
+  if (netmanager_base_enable_traffic_statistic) {
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+ohos_static_library("net_conn_manager_static") {
+  testonly = true
+  use_exceptions = true
+  sources = [
+    "$NETCONNMANAGER_COMMON_DIR/src/route_utils.cpp",
+    "src/dns_result_call_back.cpp",
+    "src/nat464_service.cpp",
+    "src/net_activate.cpp",
+    "src/net_caps.cpp",
+    "src/net_conn_callback_proxy_wrapper.cpp",
+    "src/net_conn_event_handler.cpp",
+    "src/net_conn_service.cpp",
+    "src/net_conn_service_iface.cpp",
+    "src/net_dns_resolve.cpp",
+    "src/net_dual_stack_probe.cpp",
+    "src/net_factoryreset_callback.cpp",
+    "src/net_http_probe.cpp",
+    "src/net_http_probe_result.cpp",
+    "src/net_http_proxy_tracker.cpp",
+    "src/net_monitor.cpp",
+    "src/net_proxy_userinfo.cpp",
+    "src/net_supplier.cpp",
+    "src/network.cpp",
+    "src/probe_thread.cpp",
+    "src/net_trace_route_probe.cpp",
+    "src/stub/net_conn_callback_proxy.cpp",
+    "src/stub/refresh_http_proxy_callback_proxy.cpp",
+    "src/stub/net_conn_service_stub.cpp",
+    "src/stub/net_detection_callback_proxy.cpp",
+    "src/stub/net_factoryreset_callback_proxy.cpp",
+    "src/stub/net_interface_callback_proxy.cpp",
+    "src/stub/net_supplier_callback_proxy.cpp",
+  ]
+
+  public_configs = [ ":net_conn_manager_config" ]
+
+  deps = [
+    "$INNERKITS_ROOT/netpolicyclient:net_policy_manager_if",
+    "$INNERKITS_ROOT/netstatsclient:net_stats_manager_if",
+    "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative/fwmarkclient:fwmark_client",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETMANAGER_BASE_ROOT/utils:net_data_share",
+    "$NETSYSCONTROLLER_ROOT_DIR:netsys_controller",
+  ]
+
+  external_deps = [
+    "ability_base:zuri",
+    "ability_runtime:app_manager",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "curl:curl_shared",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hisysevent:libhisysevent",
+    "hitrace:hitrace_meter",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "os_account:os_account_innerkits",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "jerryscript:jerryscript_shared_not_lite",
+  ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetConnManager\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "NETMANAGER_TEST",
+  ]
+
+  if(netmanager_base_enable_pac_proxy){
+    external_deps += [ "jerryscript:jerryscript_shared_not_lite" ]
+    sources += [
+      "src/net_pac_local_proxy_server.cpp",
+      "src/net_pac_manager.cpp",
+      "src/pac_functions.cpp",
+    ]
+  }
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  if (enable_sys_func) {
+    defines += [ "SYS_FUNC" ]
+  }
+
+  if (netmanager_base_enable_traffic_statistic) {
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

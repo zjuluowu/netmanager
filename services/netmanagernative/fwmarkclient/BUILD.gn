@@ -1,0 +1,64 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+config("fwmark_client_config") {
+  include_dirs = [
+    "include",
+  ]
+}
+ohos_shared_library("fwmark_client") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    boundary_sanitize = true
+    all_ubsan = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "src/fwmark_client.cpp",
+    "src/netsys_sock_client.cpp",
+  ]
+
+  include_dirs = [
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$INNERKITS_ROOT/include",
+    "include",
+    "$NETMANAGER_BASE_ROOT/utils/common_utils/include",
+  ]
+
+  cflags = common_cflags
+
+  cflags_cc = common_cflags
+  external_deps = [ "c_utils:utils" ]
+
+  defines = [
+    "NETMGR_LOG_TAG = \"NetsysFwmark\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+  public_configs = [ ":fwmark_client_config" ]
+  external_deps += [ "hilog:libhilog" ]
+
+  innerapi_tags = [ "platformsdk_indirect" ]
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

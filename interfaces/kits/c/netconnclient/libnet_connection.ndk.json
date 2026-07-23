@@ -1,0 +1,102 @@
+[
+    {
+        "first_introduced": "11",
+        "name": "OH_NetConn_GetAddrInfo"
+    },
+    {
+        "first_introduced": "11",
+        "name": "OH_NetConn_FreeDnsResult"
+    },
+    {
+        "first_introduced": "11",
+        "name": "OH_NetConn_GetAllNets"
+    },
+    {
+        "first_introduced": "11",
+        "name": "OHOS_NetConn_RegisterDnsResolver"
+    },
+    {
+        "first_introduced": "11",
+        "name": "OHOS_NetConn_UnregisterDnsResolver"
+    },
+    {
+        "first_introduced": "11",
+        "name": "OH_NetConn_HasDefaultNet"
+    },
+    {
+        "first_introduced": "11",
+        "name": "OH_NetConn_GetDefaultNet"
+    },
+    {
+        "first_introduced": "11",
+        "name": "OH_NetConn_IsDefaultNetMetered"
+    },
+    {
+        "first_introduced": "11",
+        "name": "OH_NetConn_GetConnectionProperties"
+    },
+    {
+        "first_introduced": "11",
+        "name": "OH_NetConn_GetNetCapabilities"
+    },
+    {
+        "first_introduced": "11",
+        "name": "OH_NetConn_GetDefaultHttpProxy"
+    },
+    {
+        "first_introduced": "12",
+        "name": "OH_NetConn_BindSocket"
+    },
+    {
+        "first_introduced": "12",
+        "name": "OH_NetConn_RegisterNetConnCallback"
+    },
+    {
+        "first_introduced": "12",
+        "name": "OH_NetConn_RegisterDefaultNetConnCallback"
+    },
+    {
+        "first_introduced": "12",
+        "name": "OH_NetConn_UnregisterNetConnCallback"
+    },
+    {
+        "first_introduced": "12",
+        "name": "OH_NetConn_SetAppHttpProxy"
+    },
+    {
+        "first_introduced": "12",
+        "name": "OH_NetConn_RegisterAppHttpProxyCallback"
+    },
+    {
+        "first_introduced": "12",
+        "name": "OH_NetConn_UnregisterAppHttpProxyCallback"
+    },
+    {
+        "first_introduced": "13",
+        "name": "OH_NetConn_RegisterDnsResolver"
+    },
+    {
+        "first_introduced": "13",
+        "name": "OH_NetConn_UnregisterDnsResolver"
+    },
+    {
+        "first_introduced": "15",
+        "name": "OH_NetConn_SetPacUrl"
+    },
+    {
+        "first_introduced": "15",
+        "name": "OH_NetConn_GetPacUrl"
+    },
+    {
+        "first_introduced": "20",
+        "name": "OH_NetConn_QueryProbeResult"
+    },
+    {
+        "first_introduced": "20",
+        "name": "OH_NetConn_QueryTraceRoute"
+    },
+    {
+        "first_introduced": "26",
+        "name": "OH_NetConn_RefreshGlobalHttpProxyWithCallback"
+    }
+]

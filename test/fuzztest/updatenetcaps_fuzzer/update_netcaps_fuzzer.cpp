@@ -1,0 +1,118 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "update_netcaps_fuzzer.h"
+#include "netmanager_base_test_security.h"
+#define private public
+#include "net_conn_service.h"
+
+namespace OHOS {
+namespace NetManagerStandard {
+namespace {
+const uint8_t *g_baseFuzzData = nullptr;
+size_t g_baseFuzzSize = 0;
+size_t g_baseFuzzPos;
+constexpr size_t STR_LEN = 10;
+}
+
+template <class T> T GetData()
+{
+    T object{};
+    size_t objectSize = sizeof(object);
+    if (g_baseFuzzData == nullptr || objectSize > g_baseFuzzSize - g_baseFuzzPos) {
+        return object;
+    }
+    errno_t ret = memcpy_s(&object, objectSize, g_baseFuzzData + g_baseFuzzPos, objectSize);
+    if (ret != EOK) {
+        return {};
+    }
+    g_baseFuzzPos += objectSize;
+    return object;
+}
+
+
+bool WriteInterfaceToken(MessageParcel &data)
+{
+    if (!data.WriteInterfaceToken(NetConnServiceStub::GetDescriptor())) {
+        NETMGR_LOG_D("Write token failed.");
+        return false;
+    }
+    return true;
+}
+
+static bool g_isInited = false;
+void Init()
+{
+    if (!g_isInited) {
+        if (!DelayedSingleton<NetConnService>::GetInstance()->Init()) {
+            g_isInited = false;
+        } else {
+            g_isInited = true;
+        }
+    }
+}
+
+int32_t OnRemoteRequest(uint32_t code, MessageParcel &data)
+{
+    if (!g_isInited) {
+        NETMGR_LOG_D("Net conn client fuzz test g_isInited is false.");
+        Init();
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+
+    int32_t ret = DelayedSingleton<NetConnService>::GetInstance()->OnRemoteRequest(code, data, reply, option);
+    return ret;
+}
+
+
+bool IsConnClientDataAndSizeValid(const uint8_t *data, size_t size, MessageParcel &dataParcel)
+{
+    g_baseFuzzData = data;
+    g_baseFuzzSize = size;
+    g_baseFuzzPos = 0;
+
+    if (!WriteInterfaceToken(dataParcel)) {
+        return false;
+    }
+    return true;
+}
+
+void UpdateNetCapsFuzzTest(const uint8_t *data, size_t size)
+{
+    NetManagerBaseAccessToken token;
+    MessageParcel dataParcel;
+    if (!IsConnClientDataAndSizeValid(data, size, dataParcel)) {
+        return;
+    }
+
+    uint32_t netCapsSize = GetData<uint32_t>() % 35;
+    dataParcel.WriteUint32(netCapsSize);
+    for (uint32_t i = 0; i < netCapsSize; i++) {
+        uint32_t cap = GetData<uint32_t>() % 34;
+        dataParcel.WriteUint32(cap);
+    }
+    dataParcel.WriteUint32(GetData<uint32_t>());
+    OnRemoteRequest(static_cast<uint32_t>(ConnInterfaceCode::CMD_NM_UPDATE_NET_CAPS), dataParcel);
+}
+} // namespace NetManagerStandard
+} // namespace OHOS
+/* Fuzzer entry point */
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+    OHOS::NetManagerStandard::UpdateNetCapsFuzzTest(data, size);
+    return 0;
+}

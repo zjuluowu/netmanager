@@ -1,0 +1,97 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/config/features.gni")
+
+import("//build/test.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+ohos_fuzztest("NetSysNetFirewallFuzzTest") {
+  module_out_path = fuzz_test_path
+  fuzz_config_file =
+      "$NETMANAGER_BASE_ROOT/test/fuzztest/netsysnetfirewall_fuzzer"
+  _cfi_blocklist_path =
+      "$NETMANAGER_BASE_ROOT/test/fuzztest/netsysnetfirewall_fuzzer/cfi_blocklist.txt"
+
+  include_dirs = [
+    "$INNERKITS_ROOT/include",
+    "$INNERKITS_ROOT/netconnclient/include",
+    "$INNERKITS_ROOT/netconnclient/include/proxy",
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$NETCONNMANAGER_COMMON_DIR/include",
+    "$NETCONNMANAGER_SOURCE_DIR/include",
+    "$NETCONNMANAGER_SOURCE_DIR/include/stub",
+    "$NETMANAGER_BASE_ROOT/services/common/include",
+    "$NETMANAGER_BASE_ROOT/test/netconnmanager/mock",
+    "$NETMANAGERNATIVE_ROOT/bpf/include",
+    "$NETMANAGERNATIVE_ROOT/include",
+    "$NETMANAGERNATIVE_ROOT/include/manager",
+    "$NETMANAGERNATIVE_ROOT/include/netsys",
+    "$NETMANAGERNATIVE_ROOT/include/netsys/wrapper",
+    "$NETMANAGER_BASE_ROOT/test/security",
+  ]
+
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+    "-flto",
+    "-fvisibility=hidden",
+  ]
+
+  ldflags = [ "-flto" ]
+
+  sources = [
+    "$NETMANAGER_BASE_ROOT/test/commonduplicatedcode/common_mock_netmanager_permission.cpp",
+    "netsys_netfirewall_fuzzer.cpp"
+  ]
+
+  deps = [
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative:netsys_native_manager_static",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative/bpf:netsys_bpf_utils",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETSYSCONTROLLER_ROOT_DIR:netsys_controller",
+  ]
+
+  defines = [
+    "HI_LOG_ENABLE",
+    "DH_LOG_TAG=\"NetSysNetFirewallFuzzTest\"",
+    "LOG_DOMAIN=0xD004100",
+    "private = public",
+    "protected = public",
+  ]
+
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "dhcp:dhcp_sdk",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+}
+
+group("fuzztest") {
+  testonly = true
+
+  deps = [ ":NetSysNetFirewallFuzzTest" ]
+}

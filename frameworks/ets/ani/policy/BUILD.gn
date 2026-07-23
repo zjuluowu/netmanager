@@ -1,0 +1,129 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/config/components/ets_frontend/ets2abc_config.gni")
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+rust_cxx("policy_ani_cxx") {
+  sources = [ "src/wrapper.rs" ]
+}
+
+ohos_static_library("policy_ani_static") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  cflags = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-fvisibility=hidden",
+    "-Oz",
+  ]
+  branch_protector_ret = "pac_ret"
+  include_dirs = [
+    "include",
+    "${target_gen_dir}/src",
+  ]
+  sources = [ "src/cxx/policy_ani.cpp" ]
+  sources += get_target_outputs(":policy_ani_cxx")
+
+  deps = [
+    ":policy_ani_cxx",
+    "$INNERKITS_ROOT/netpolicyclient:net_policy_manager_if",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+  ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "napi:ace_napi",
+    "rust_cxx:cxx_cppdeps",
+    "ability_base:want",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:wantagent_innerkits",
+    "ability_runtime:napi_base_context",
+    "ability_runtime:runtime",
+    "ability_runtime:ui_extension",
+    "ace_engine:ace_uicontent",
+  ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+ohos_rust_shared_library("policy_ani") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  ldflags = [
+    "-Wl,--exclude-libs=ALL",
+    "-Wl,--gc-sections",
+    "-Wl,--icf=safe",
+    "-Wl,--strip-all",
+  ]
+  rustflags = [
+    "-C", "codegen-units=1",
+    "-C", "opt-level=z",
+    "-C", "debuginfo=0",
+    "-C", "strip=symbols",
+    "-Zstack-protector=all",
+  ]
+  sources = [ "src/lib.rs" ]
+
+  external_deps = [
+    "hilog:hilog_rust",
+    "runtime_core:ani",
+    "rust_cxx:lib",
+  ]
+  deps = [
+    ":policy_ani_static",
+    "../../../../common/ani_rs:ani_rs",
+    "../../../../common/ani_sys:ani_sys",
+    "//third_party/rust/crates/serde/serde:lib",
+  ]
+  clippy_lints = "none"
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+  output_extension = "so"
+}
+
+generate_static_abc("policy") {
+  base_url = "./ets"
+
+  files = [ "ets/@ohos.net.policy.d.ets" ]
+
+  dst_file = "$target_out_dir/policy.abc"
+  out_puts = [ "$target_out_dir/policy.abc" ]
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/policy.abc"
+}
+
+ohos_prebuilt_etc("policy_etc") {
+  source = "$target_out_dir/policy.abc"
+  module_install_dir = "framework"
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+  deps = [ ":policy" ]
+}
+
+group("policy_ani_group") {
+  deps = [
+    ":policy_ani",
+    ":policy_etc",
+  ]
+}

@@ -1,0 +1,67 @@
+{
+    "string":[
+        {
+            "name":"netstats_excess_daymark_notofication_title",
+            "value":"ເກີນຂີດຈຳກັດປະຈຳວັນ",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"netstats_month_limit_message",
+            "value":"ຮອດ​ຂີດ​ຈຳ​ກັດ​ຂໍ້​ມູນມື​ຖືປະ​ຈຳ​ເດືອນ (%s) ແລ້ວ",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthmark_notofication_title",
+            "value":"ເກີນ​ຂີດ​ຈຳ​ກັດ​​ປະ​ຈຳ​ເດືອນ​ແລ້ວ",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_daily_notify_message",
+            "value":"ຂໍ້​ມູນ​ໃຊ້​ມື້​ນີ້​ແລ້ວ​ຢູ່​ທີ່​ຂີດ​ຈຳ​ກັດ (%s)",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthmark_notofication_title_sub",
+            "value":"ການເຕືອນການນຳ​ໃຊ້​ຂໍ້​ມູນ​ SIM %d",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthlimit_notofication_title_sub",
+            "value":"ການເຕືອນການນຳ​ໃຊ້​ຂໍ້​ມູນ​ SIM %d",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_daymark_notofication_title_sub",
+            "value":"ການເຕືອນການນຳ​ໃຊ້​ຂໍ້​ມູນ​ SIM %d",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_month_notify_message",
+            "value":"ການ​ໃຊ້ຂໍ້​ມູນປະ​ຈຳ​ເດືອນຢູ່​ທີ່ %s ຂອງ​ຂີດ​ຈຳ​ກັດ",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"netstats_excess_monthlimit_notofication_title",
+            "value":"ເກີນ​ຂີດ​ຈຳ​ກັດ​​ປະ​ຈຳ​ເດືອນ​ແລ້ວ",
+            "attr":{
+                "priority":"LT"
+            }
+        }
+    ]
+}

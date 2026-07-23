@@ -1,0 +1,176 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{
+  global:
+    extern "C++" {
+      "OHOS::NetManagerStandard::NetsysController::AddInterfaceAddress(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int)";
+      "OHOS::NetManagerStandard::NetsysController::AddStaticArp(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::AddStaticIpv6Addr(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::BandwidthAddAllowedList(unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::BandwidthAddDeniedList(unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::BandwidthEnableDataSaver(bool)";
+      "OHOS::NetManagerStandard::NetsysController::BandwidthRemoveAllowedList(unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::BandwidthRemoveDeniedList(unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::BandwidthRemoveIfaceQuota(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::BandwidthSetIfaceQuota(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, long)";
+      "OHOS::NetManagerStandard::NetsysController::BandwidthSetIfaceQuota(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, long long)";
+      "OHOS::NetManagerStandard::NetsysController::ClearDefaultNetWorkNetId()";
+      "OHOS::NetManagerStandard::NetsysController::ClearFirewallAllRules()";
+      "OHOS::NetManagerStandard::NetsysController::ClearFirewallRules(OHOS::NetManagerStandard::NetFirewallRuleType)";
+      "OHOS::NetManagerStandard::NetsysController::CloseSocketsUid(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::CreateNetworkCache(unsigned short, bool)";
+      "OHOS::NetManagerStandard::NetsysController::CreateVnic(unsigned short, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int, std::__h::set<int, std::__h::less<int>, std::__h::allocator<int>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::DelBrokerUidAccessPolicyMap(unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::DeleteIncreaseTrafficMap(unsigned long)";
+      "OHOS::NetManagerStandard::NetsysController::ClearSimStatsBpfMap()";
+      "OHOS::NetManagerStandard::NetsysController::DeleteNetworkAccessPolicy(unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::DeleteSimStatsInfo(unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::DeleteStatsInfo(unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::DelStaticArp(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::DelStaticIpv6Addr(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::DelInterfaceAddress(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int)";
+      "OHOS::NetManagerStandard::NetsysController::DelInterfaceAddress(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int, int)";
+      "OHOS::NetManagerStandard::NetsysController::DestroyNetworkCache(unsigned short, bool)";
+      "OHOS::NetManagerStandard::NetsysController::DestroyVnic()";
+      "OHOS::NetManagerStandard::NetsysController::DisableDistributedNet(bool, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::DisableWearableDistributedNetForward()";
+      "OHOS::NetManagerStandard::NetsysController::DisableNat(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::EnableDistributedClientNet(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::EnableDistributedServerNet(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::EnableNat(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::EnableWearableDistributedNetForward(int, int)";
+      "OHOS::NetManagerStandard::NetsysController::FirewallEnableChain(unsigned int, bool)";
+      "OHOS::NetManagerStandard::NetsysController::FirewallSetUidsAllowedListChain(unsigned int, std::__h::vector<unsigned int, std::__h::allocator<unsigned int>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::FirewallSetUidRule(unsigned int, std::__h::vector<unsigned int, std::__h::allocator<unsigned int>> const&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::FirewallSetUidsDeniedListChain(unsigned int, std::__h::vector<unsigned int, std::__h::allocator<unsigned int>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::FlushDnsCache(unsigned short)";
+      "OHOS::NetManagerStandard::NetsysController::GetAddrInfo(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, AddrInfo const&, unsigned short, std::__h::vector<AddrInfo, std::__h::allocator<AddrInfo>>&)";
+      "OHOS::NetManagerStandard::NetsysController::GetAllRxBytes()";
+      "OHOS::NetManagerStandard::NetsysController::GetAllSimStatsInfo(std::__h::vector<OHOS::NetManagerStandard::NetStatsInfo, std::__h::allocator<OHOS::NetManagerStandard::NetStatsInfo>>&)";
+      "OHOS::NetManagerStandard::NetsysController::GetAllStatsInfo(std::__h::vector<OHOS::NetManagerStandard::NetStatsInfo, std::__h::allocator<OHOS::NetManagerStandard::NetStatsInfo>>&)";
+      "OHOS::NetManagerStandard::NetsysController::GetAllTxBytes()";
+      "OHOS::NetManagerStandard::NetsysController::GetCellularRxBytes()";
+      "OHOS::NetManagerStandard::NetsysController::GetCellularTxBytes()";
+      "OHOS::NetManagerStandard::NetsysController::GetCookieStats(unsigned long&, unsigned int, unsigned long)";
+      "OHOS::NetManagerStandard::NetsysController::GetCookieStats(unsigned long long&, unsigned int, unsigned long long)";
+      "OHOS::NetManagerStandard::NetsysController::GetIfaceStats(unsigned long&, unsigned int, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::GetIfaceStats(unsigned long long&, unsigned int, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::GetInstance()";
+      "OHOS::NetManagerStandard::NetsysController::GetInterfaceConfig(OHOS::nmd::InterfaceConfigurationParcel&)";
+      "OHOS::NetManagerStandard::NetsysController::GetInterfaceMtu(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::GetNetworkCellularSharingTraffic(OHOS::nmd::NetworkSharingTraffic&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>&)";
+      "OHOS::NetManagerStandard::NetsysController::SetDpaCellularSharingTraffic(OHOS::nmd::NetworkDpaTrafficReport&)";
+      "OHOS::NetManagerStandard::NetsysController::GetNetworkSharingTraffic(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, OHOS::nmd::NetworkSharingTraffic&)";
+      "OHOS::NetManagerStandard::NetsysController::GetNetworkSharingType(std::__h::set<unsigned int, std::__h::less<unsigned int>, std::__h::allocator<unsigned int>>&)";
+      "OHOS::NetManagerStandard::NetsysController::GetNetStateTrafficMap(unsigned char, unsigned long&)";
+      "OHOS::NetManagerStandard::NetsysController::GetResolverConfig(unsigned short, std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>>&, std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>>&, unsigned short&, unsigned char&)";
+      "OHOS::NetManagerStandard::NetsysController::GetTotalStats(unsigned long&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::GetTotalStats(unsigned long long&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::GetUidStats(unsigned long&, unsigned int, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::GetUidStats(unsigned long long&, unsigned int, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::GetUidTxBytes(unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::GetUidRxBytes(unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::InterfaceGetList()";
+      "OHOS::NetManagerStandard::NetsysController::InterfaceSetIpAddress(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::IpDisableForwarding(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::IpEnableForwarding(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::IpfwdAddInterfaceForward(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::IpfwdRemoveInterfaceForward(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::NetworkAddInterface(int, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, OHOS::NetManagerStandard::NetBearType)";
+      "OHOS::NetManagerStandard::NetsysController::NetworkAddRoute(int, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, bool)";
+      "OHOS::NetManagerStandard::NetsysController::NetworkAddUids(int, std::__h::vector<int, std::__h::allocator<int>> const&, std::__h::vector<int, std::__h::allocator<int>> const&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::NetworkCreatePhysical(int, int)";
+      "OHOS::NetManagerStandard::NetsysController::NetworkCreateVirtual(int, bool)";
+      "OHOS::NetManagerStandard::NetsysController::NetworkDelUids(int, std::__h::vector<int, std::__h::allocator<int>> const&, std::__h::vector<int, std::__h::allocator<int>> const&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::NetworkDestroy(int, bool)";
+      "OHOS::NetManagerStandard::NetsysController::NetworkRemoveInterface(int, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::NetworkRemoveRoute(int, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, bool)";
+      "OHOS::NetManagerStandard::NetsysController::NotifyNetBearerTypeChange(std::__h::set<OHOS::NetManagerStandard::NetBearType, std::__h::less<OHOS::NetManagerStandard::NetBearType>, std::__h::allocator<OHOS::NetManagerStandard::NetBearType>>)";
+      "OHOS::NetManagerStandard::NetsysController::ProcessVpnStage(OHOS::NetsysNative::SysVpnStageCode, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::RegisterCallback(OHOS::sptr<OHOS::NetManagerStandard::NetsysControllerCallback>)";
+      "OHOS::NetManagerStandard::NetsysController::RegisterDnsResultCallback(OHOS::sptr<OHOS::NetManagerStandard::NetsysDnsReportCallback> const&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::RegisterDnsQueryResultCallback(OHOS::sptr<OHOS::NetManagerStandard::NetsysDnsQueryReportCallback> const&)";
+      "OHOS::NetManagerStandard::NetsysController::RegisterNetFirewallCallback(OHOS::sptr<OHOS::NetsysNative::INetFirewallCallback> const&)";
+      "OHOS::NetManagerStandard::NetsysController::RegisterNetsysTrafficCallback(OHOS::sptr<OHOS::NetsysNative::INetsysTrafficCallback> const&)";
+      "OHOS::NetManagerStandard::NetsysController::SetBrokerUidAccessPolicyMap(std::__h::unordered_map<unsigned int, unsigned int, std::__h::hash<unsigned int>, std::__h::equal_to<unsigned int>, std::__h::allocator<std::__h::pair<unsigned int const, unsigned int>>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::SetDefaultNetWork(int)";
+      "OHOS::NetManagerStandard::NetsysController::SetDnsCache(unsigned short, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, AddrInfo const&)";
+      "OHOS::NetManagerStandard::NetsysController::SetEnableIpv6(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned int, bool)";
+      "OHOS::NetManagerStandard::NetsysController::SetIpv6AutoConf(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::SetFirewallCurrentUserId(int)";
+      "OHOS::NetManagerStandard::NetsysController::SetFirewallDefaultAction(int, OHOS::NetManagerStandard::FirewallRuleAction, OHOS::NetManagerStandard::FirewallRuleAction)";
+      "OHOS::NetManagerStandard::NetsysController::SetFirewallRules(OHOS::NetManagerStandard::NetFirewallRuleType, std::__h::vector<OHOS::sptr<OHOS::NetManagerStandard::NetFirewallBaseRule>, std::__h::allocator<OHOS::sptr<OHOS::NetManagerStandard::NetFirewallBaseRule>>> const&, bool)";
+      "OHOS::NetManagerStandard::NetsysController::SetInterfaceConfig(OHOS::nmd::InterfaceConfigurationParcel const&)";
+      "OHOS::NetManagerStandard::NetsysController::SetInterfaceDown(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::SetInterfaceMtu(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int)";
+      "OHOS::NetManagerStandard::NetsysController::SetInterfaceUp(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::SetInternetPermission(unsigned int, unsigned char)";
+      "OHOS::NetManagerStandard::NetsysController::SetIpCommandForRes(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>&)";
+      "OHOS::NetManagerStandard::NetsysController::SetIptablesCommandForRes(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>&, OHOS::NetsysNative::IptablesType)";
+      "OHOS::NetManagerStandard::NetsysController::SetIpv6PrivacyExtensions(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::SetNetworkAccessPolicy(unsigned int, OHOS::NetManagerStandard::NetworkAccessPolicy, bool)";
+      "OHOS::NetManagerStandard::NetsysController::SetNetStatusMap(unsigned char, unsigned char)";
+      "OHOS::NetManagerStandard::NetsysController::SetNetStateTrafficMap(unsigned char, unsigned long)";
+      "OHOS::NetManagerStandard::NetsysController::SetNicTrafficAllowed(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&, bool)";
+      "OHOS::NetManagerStandard::NetsysController::SetResolverConfig(unsigned short, unsigned short, unsigned char, std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&, std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::SetUserDefinedServerFlag(unsigned short, bool)";
+      "OHOS::NetManagerStandard::NetsysController::SetTcpBufferSizes(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::StartClat(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::ShareDnsSet(unsigned short)";
+      "OHOS::NetManagerStandard::NetsysController::StartDnsProxyListen()";
+      "OHOS::NetManagerStandard::NetsysController::StopClat(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::StopDnsProxyListen()";
+      "OHOS::NetManagerStandard::NetsysController::UpdateIfIndexMap(signed char, unsigned long)";
+      "OHOS::NetManagerStandard::NetsysController::UpdateNetworkSharingType(unsigned int, bool)";
+      "OHOS::NetManagerStandard::NetsysController::UpdateVpnRules(unsigned short, std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&, bool)";
+      "OHOS::NetManagerStandard::NetsysController::UnregisterDnsResultCallback(OHOS::sptr<OHOS::NetManagerStandard::NetsysDnsReportCallback> const&)";
+      "OHOS::NetManagerStandard::NetsysController::UnregisterDnsQueryResultCallback(OHOS::sptr<OHOS::NetManagerStandard::NetsysDnsQueryReportCallback> const&)";
+      "OHOS::NetManagerStandard::NetsysController::UnRegisterNetFirewallCallback(OHOS::sptr<OHOS::NetsysNative::INetFirewallCallback> const&)";
+      "OHOS::NetManagerStandard::NetsysController::UpdateEnterpriseRoute(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned int, bool)";
+      "OHOS::NetManagerStandard::NetsysController::SetInternetAccessByIpForWifiShare(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned char, bool, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysController::GetIpNeighTable(std::__h::vector<OHOS::NetManagerStandard::NetIpMacInfo, std::__h::allocator<OHOS::NetManagerStandard::NetIpMacInfo>>&)";
+      "OHOS::NetManagerStandard::NetsysController::GetSystemNetPortStates(OHOS::NetManagerStandard::NetPortStatesInfo&)";
+      "OHOS::NetManagerStandard::NetsysController::CreateVlan(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::DestroyVlan(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::AddVlanIp(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned int, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysController::GetConnectOwnerUid(OHOS::NetManagerStandard::NetConnInfo const&, int&)";
+      "OHOS::NetManagerStandard::NetsysController::SetIpv6UidBlackList(std::__h::vector<int, std::__h::allocator<int>>&, int)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::~NetsysNativeClient()";
+      "OHOS::NetManagerStandard::NetsysNativeClient::AddInterfaceAddress(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::ClearDefaultNetWorkNetId()";
+      "OHOS::NetManagerStandard::NetsysNativeClient::ClearInterfaceAddrs(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::CreateNetworkCache(unsigned short, bool)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::DestroyNetworkCache(unsigned short, bool)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::FlushDnsCache(unsigned short)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::GetAddrInfo(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, AddrInfo const&, unsigned short, std::__h::vector<AddrInfo, std::__h::allocator<AddrInfo>>&)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::GetInterfaceConfig(OHOS::nmd::InterfaceConfigurationParcel&)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::GetResolverConfig(unsigned short, std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>>&, std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>>&, unsigned short&, unsigned char&)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::Init()";
+      "OHOS::NetManagerStandard::NetsysNativeClient::InterfaceGetList()";
+      "OHOS::NetManagerStandard::NetsysNativeClient::IpEnableForwarding(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::NetsysNativeClient()";
+      "OHOS::NetManagerStandard::NetsysNativeClient::RegisterDnsResultCallback(OHOS::sptr<OHOS::NetManagerStandard::NetsysDnsReportCallback> const&, unsigned int)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::SetDefaultNetWork(int)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::SetInterfaceDown(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::SetInterfaceUp(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::SetIptablesCommandForRes(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>&, OHOS::NetsysNative::IptablesType)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::SetResolverConfig(unsigned short, unsigned short, unsigned char, std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&, std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::ShareDnsSet(unsigned short)";
+      "OHOS::NetManagerStandard::NetsysNativeClient::StartDnsProxyListen()";
+      "OHOS::NetManagerStandard::NetsysNativeClient::UnregisterDnsResultCallback(OHOS::sptr<OHOS::NetManagerStandard::NetsysDnsReportCallback> const&)";
+      "OHOS::NetManagerStandard::NetsysController::NetworkAddRoutes(int, std::__h::vector<OHOS::nmd::NetworkRouteInfo, std::__h::allocator<OHOS::nmd::NetworkRouteInfo>> const&)";
+    };
+  local:
+   *;
+};

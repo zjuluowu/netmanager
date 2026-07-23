@@ -1,0 +1,176 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+ohos_shared_library("connection") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    boundary_sanitize = true
+    all_ubsan = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  include_dirs = [
+    "async_context/include",
+    "async_work/include",
+    "constant/include",
+    "connection_exec/include",
+    "connection_helper/include",
+    "connection_module/include",
+    "observer/include",
+    "options/include",
+  ]
+
+  sources = [ "connection_module/src/connection_module.cpp" ]
+
+  cflags = [
+    "-D_FORTIFY_SOURCE=2",
+    "-O2",
+  ]
+
+  cflags_cc = [
+    "-D_FORTIFY_SOURCE=2",
+    "-O2",
+  ]
+
+  deps = [
+    "$INNERKITS_ROOT/netconnclient:net_conn_manager_if",
+    "$NETMANAGER_BASE_ROOT/frameworks/js/napi/connection:connection_if",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETMANAGER_BASE_ROOT/utils/napi_utils:napi_utils",
+  ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "libuv:uv",
+    "napi:ace_napi",
+    "node:node_header_notice",
+  ]
+
+  if (product_name != "qemu-arm-linux-min") {
+    external_deps += [ "hiappevent:hiappevent_innerapi" ]
+  }
+
+  relative_install_dir = "module/net"
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+ohos_shared_library("connection_if") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    boundary_sanitize = true
+    ubsan = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  include_dirs = [
+    "async_context/include",
+    "async_work/include",
+    "constant/include",
+    "connection_exec/include",
+    "connection_helper/include",
+    "net_handle_interface/include",
+    "observer/include",
+    "options/include",
+  ]
+
+  sources = [
+    "async_context/src/addnetworkroute_context.cpp",
+    "async_context/src/bindsocket_context.cpp",
+    "async_context/src/deletecustomdnsrule_context.cpp",
+    "async_context/src/deletecustomdnsrules_context.cpp",
+    "async_context/src/factoryresetnetwork_context.cpp",
+    "async_context/src/getaddressbyname_context.cpp",
+    "async_context/src/getappnet_context.cpp",
+    "async_context/src/getconnectowneruid_context.cpp",
+    "async_context/src/getdefaultnet_context.cpp",
+    "async_context/src/getdns_context.cpp",
+    "async_context/src/gethttpproxy_context.cpp",
+    "async_context/src/getinterfaceconfig_context.cpp",
+    "async_context/src/getipneightable_context.cpp",
+    "async_context/src/getsystemnetportstates_context.cpp",
+    "async_context/src/createvlan_context.cpp",
+    "async_context/src/destroyvlan_context.cpp",
+    "async_context/src/addvlanip_context.cpp",
+    "async_context/src/deletevlanip_context.cpp",
+    "async_context/src/interfaceregister_context.cpp",
+    "async_context/src/none_params_context.cpp",
+    "async_context/src/pacurl_context.cpp",
+    "async_context/src/parse_nethandle_context.cpp",
+    "async_context/src/register_context.cpp",
+    "async_context/src/registernetsupplier_context.cpp",
+    "async_context/src/setappnet_context.cpp",
+    "async_context/src/setcustomdnsrule_context.cpp",
+    "async_context/src/setglobalhttpproxy_context.cpp",
+    "async_context/src/setinterfaceipaddr_context.cpp",
+    "async_context/src/setinterfaceup_context.cpp",
+    "async_context/src/unregisternetsupplier_context.cpp",
+    "async_context/src/netextattribute_context.cpp",
+    "async_context/src/queryproberesult_context.cpp",
+    "async_context/src/querytraceroute_context.cpp",
+    "async_work/src/connection_async_work.cpp",
+    "connection_exec/src/connection_exec.cpp",
+    "connection_helper/src/icu_helper.cpp",
+    "net_handle_interface/src/net_handle_interface.cpp",
+    "observer/src/net_conn_callback_observer.cpp",
+    "observer/src/net_interface_callback_observer.cpp",
+    "options/src/net_address.cpp",
+    "options/src/netconnection.cpp",
+    "options/src/netinterface.cpp",
+  ]
+
+  cflags = [
+    "-D_FORTIFY_SOURCE=2",
+    "-O2",
+  ]
+
+  cflags_cc = [
+    "-D_FORTIFY_SOURCE=2",
+    "-O2",
+  ]
+
+  deps = [
+    "$INNERKITS_ROOT/netconnclient:net_conn_manager_if",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETMANAGER_BASE_ROOT/utils/napi_utils:napi_utils",
+    "$NETMANAGER_BASE_ROOT/interfaces/kits/c/netconnclient:net_connection",
+  ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "ipc:ipc_core",
+    "libuv:uv",
+    "napi:ace_napi",
+    "node:node_header_notice",
+    "samgr:samgr_proxy",
+  ]
+
+  if (product_name != "qemu-arm-linux-min") {
+    external_deps += [ "hiappevent:hiappevent_innerapi" ]
+  }
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}

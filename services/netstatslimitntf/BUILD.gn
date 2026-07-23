@@ -1,0 +1,102 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+if (netmanager_base_enable_traffic_statistic) {
+  config("netmanager_stats_limit_notification_config") {
+    include_dirs = [ "./include" ]
+
+    cflags = common_cflags
+    cflags_cc = common_cflags
+  }
+  ohos_shared_library("netmanager_stats_limit_notification") {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      boundary_sanitize = true
+      ubsan = true
+      debug = false
+    }
+
+    branch_protector_ret = "pac_ret"
+
+    version_script = "libnetmanager_stats_limit_notification.map"
+
+    configs = [
+      ":netmanager_stats_limit_notification_config",
+      "$NETSTATSMANAGER_SOURCE_DIR:net_stats_manager_config",
+    ]
+
+    deps = [
+      "$INNERKITS_ROOT/netstatsclient:net_stats_parcel",
+      "$INNERKITS_ROOT/netstatsclient:netstats_service_interface_stub",
+      "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    ]
+
+    cflags = common_cflags
+
+    cflags_cc = common_cflags
+
+    ldflags = [
+      "-Wl,--exclude-libs=ALL",
+      "-Wl,--gc-sections",
+    ]
+
+    external_deps = [
+      "cJSON:cjson",
+      "c_utils:utils",
+      "ffrt:libffrt",
+      "os_account:os_account_innerkits",
+    ]
+
+    defines = [
+      "USE_SQLITE_SYMBOLS",
+      "NETMGR_LOG_TAG = \"NetStatsClient\"",
+      "LOG_DOMAIN = 0xD0015B0",
+    ]
+
+    external_deps += [
+      "ability_runtime:dataobs_manager",
+      "core_service:tel_core_service_api",
+      "distributed_notification_service:ans_innerkits",
+      "i18n:intl_util",
+      "state_registry:tel_state_registry_api",
+    ]
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+    sources = [ "src/net_stats_notification.cpp" ]
+
+    if (netmanager_base_share_traffic_limit_enable) {
+      defines += [ "SUPPORT_NETWORK_SHARE" ]
+      external_deps += [ "netmanager_ext:net_tether_manager_if" ]
+    }
+
+    if (enable_netmgr_debug) {
+      defines += [ "NETMGR_DEBUG" ]
+    }
+
+    external_deps += [ "hilog:libhilog" ]
+
+    part_name = "netmanager_base"
+    subsystem_name = "communication"
+  }
+}
+
+group("netmanager_stats_limit_notification_target") {
+  if (netmanager_base_enable_traffic_statistic) {
+    deps = [ ":netmanager_stats_limit_notification" ]
+  } else {
+    deps = []
+  }
+}

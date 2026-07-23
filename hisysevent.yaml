@@ -1,0 +1,182 @@
+# Copyright (C) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+domain: NETMANAGER
+
+HTTP_PERF:
+  __BASE: {type: STATISTIC, level: MINOR, desc: HTTP performance, preserve: true}
+  PACKAGE_NAME: {type: STRING, desc: package name}
+  TOTAL_TIME: {type: DOUBLE, desc: total time of all successful requests}
+  TOTAL_RATE: {type: DOUBLE, desc: total rate of all successful requets}
+  SUCCESS_COUNT: {type: UINT32, desc: successful requests count}
+  TOTAL_COUNT: {type: UINT32, desc: total requests count}
+  VERSION: {type: STRING, desc: internal http protocol version usage count}
+  TOTAL_DNS_TIME: {type: DOUBLE, desc: total dns time of all the successful request}
+  TOTAL_TCP_TIME: {type: DOUBLE, desc: total tcp time all the successful request}
+  TOTAL_TLS_TIME: {type: DOUBLE, desc: total tls time all the successful request}
+  TOTAL_FIRST_RECEIVE_TIME: {type: DOUBLE, desc: total first receive time of all the successful request}
+
+NET_STACK_HTTP_RESPONSE_ERROR:
+  __BASE: {type: FAULT, level: CRITICAL, desc: TOP_APP_HTTP_NET_STACK, preserve: true}
+  PACKAGE_NAME: {type: STRING, desc: package name}
+  TOTAL_DNS_TIME: {type: DOUBLE, arrsize: 10, desc: total dns time of all the successful request}
+  TOTAL_TCP_TIME: {type: DOUBLE, arrsize: 10, desc: total tcp time all the successful request}
+  TOTAL_TLS_TIME: {type: DOUBLE, arrsize: 10, desc: total tls time all the successful request}
+  IP_TYPE: {type: INT8, arrsize: 10, desc: IP type of all the error response}
+  OS_ERR: {type: INT64, arrsize: 10, desc: os error of all the error response}
+  ERROR_CODE: {type: INT32, arrsize: 10, desc: error code of all the error response}
+
+NET_CONN_SUPPLER_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: send supplier fault event}
+  UPDATE_SUPPLIERID: {type: INT32, desc: update supplier id}
+  UPDATE_SUPPLIERINFO: {type: STRING, desc: update supplier info}
+  UPDATE_NETLINKID: {type: INT32, desc: update netlink id}
+  UPDATE_NETLINKINFO: {type: STRING, desc: update netlink info}
+  ERROR_TYPE: {type: INT32, desc: the error code}
+  ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_CONN_SUPPLER_STAT:
+  __BASE: {type: BEHAVIOR, level: MINOR, desc: send supplier behavior event}
+  NETID: {type: INT32, desc: net id}
+  REGISTER_BEARERTYPE: {type: INT32, desc: register bearer type code}
+  REGISTER_IDENT: {type: STRING, desc: register ident code}
+  REGISTER_SUPPLIERID: {type: INT32, desc: register supplier id}
+  UPDATE_SUPPLIERID: {type: INT32, desc: update supplier info}
+  UPDATE_SUPPLIERINFO: {type: STRING, desc: update supplier info}
+  UPDATE_NETLINKID: {type: INT32, desc: update netlink id}
+  UPDATE_NETLINKINFO: {type: STRING, desc: update netlink info}
+  ERROR_TYPE: {type: INT32, desc: the error code}
+  ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_CONN_REQUEST_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: send request fault event}
+  CAPABILITIES: {type: STRING, desc: capabilities info}
+  SUPPLIERIDENT: {type: STRING, desc: request supplier ident}
+  ERROR_TYPE: {type: INT32, desc: the error code}
+  ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_CONN_REQUEST_STAT:
+  __BASE: {type: BEHAVIOR, level: MINOR, desc: send request behavior event}
+  CAPABILITIES: {type: STRING, desc: capabilities info}
+  SUPPLIERIDENT: {type: STRING, desc: request supplier ident}
+  CALLBACK_AVAILABLE: {type: STRING, desc: the callback available}
+
+NET_CONN_MONITOR_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: send monitor fault event}
+  SOCKETFD: {type: INT32, desc: monitor socket fd}
+  NETID: {type: INT32, desc: monitor network id}
+  ERROR_TYPE: {type: INT32, desc: the error code}
+  ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_CONN_MONITOR_STAT:
+  __BASE: {type: BEHAVIOR, level: MINOR, desc: send monitor behavior event}
+  STATUS: {type: INT32, desc: monitor status}
+
+NET_SHARING_SETUP_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: send setup fault event}
+  SHARING_TYPE: {type: INT32, desc: the type of sharing}
+  OPERATION_TYPE: {type: INT32, desc: the operation type}
+  ERROR_TYPE: {type: INT32, desc: the error code}
+  ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_SHARING_CANCEL_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: send cancel fault event}
+  SHARING_TYPE: {type: INT32, desc: the type of sharing}
+  OPERATION_TYPE: {type: INT32, desc: the operation type}
+  ERROR_TYPE: {type: INT32, desc: the error code}
+  ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_SHARING_TIME_STAT:
+  __BASE: {type: BEHAVIOR, level: MINOR, desc: sharing state message}
+  SHARING_COUNT: {type: INT32, desc: the number of sharing}
+  SHARING_TYPE: {type: INT32, desc: the type of sharing}
+ 
+NET_MDNS_REQUEST_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: send request fault event}
+  INFO: {type: STRING, desc: mDNS info}
+  ERROR_TYPE: {type: INT32, desc: the error code}
+  ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_MDNS_REQUEST_BEHAVIOR:
+  __BASE: {type: BEHAVIOR, level: MINOR, desc: send request behavior event}
+  INFO: {type: STRING, desc: mDNS info}
+
+NET_VPN_CONNECT_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: send setup fault event}
+  VPN_LEGACY: {type: INT32, desc: the type of vpn}
+  OPERATION_TYPE: {type: INT32, desc: the operation type}
+  VPN_ERROR_TYPE: {type: INT32, desc: the error code}
+  VPN_ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_START_DIST_NETWORK_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: start distributed network fault event}
+  DEVICE_ID: {type: STRING, desc: device info}
+  SESSION_ID: {type: INT32, desc: session id}
+  ERROR_TYPE: {type: INT32, desc: the error code}
+  ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_START_DIST_NETWORK_BEHAVIOR:
+  __BASE: {type: BEHAVIOR, level: MINOR, desc: start distributed network behavior event}
+  DEVICE_ID: {type: STRING, desc: device info}
+
+NET_REMOTE_DEVICE_INFO_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: get remote device info fault event}
+  ERROR_TYPE: {type: INT32, desc: the error code}
+  ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_REMOTE_DEVICE_INFO_BEHAVIOR:
+  __BASE: {type: BEHAVIOR, level: MINOR, desc: get remote device info behavior event}
+
+NET_FIREWALL_CONF_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: net firewall policy configuration and issuance failed}
+  FIREWALL_USER_ID: {type: INT32, desc: user id}
+  FIREWALL_ERROR_TYPE: {type: INT32, desc: the error code}
+  FIREWALL_ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_FIREWALL_REQ_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: net firewall policy acquisition failed}
+  FIREWALL_USER_ID: {type: INT32, desc: user id}
+  FIREWALL_ERROR_TYPE: {type: INT32, desc: the error code}
+  FIREWALL_ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_FIREWALL_LOG_REQ_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: net firewall interception log query failed}
+  FIREWALL_USER_ID: {type: INT32, desc: user id}
+  FIREWALL_ERROR_TYPE: {type: INT32, desc: the error code}
+  FIREWALL_ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_FIREWALL_INIT_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: built in firewall policy failed}
+  FIREWALL_USER_ID: {type: INT32, desc: user id}
+  FIREWALL_ERROR_TYPE: {type: INT32, desc: the error code}
+  FIREWALL_ERROR_MSG: {type: STRING, desc: the error message}
+
+NET_FIREWALL_CONF_BEHAVIOR:
+  __BASE: {type: BEHAVIOR, level: MINOR, desc: net firewall policy configuration behavior management}
+  FIREWALL_USER_ID: {type: INT32, desc: user id}
+
+NET_FIREWALL_REQ_BEHAVIOR:
+  __BASE: {type: BEHAVIOR, level: MINOR, desc: net firewall policy query behavior management}
+  FIREWALL_USER_ID: {type: INT32, desc: user id}
+
+NET_FIREWALL_LOG_REQ_BEHAVIOR:
+  __BASE: {type: BEHAVIOR, level: MINOR, desc: net firewall interception log query behavior management}
+  FIREWALL_USER_ID: {type: INT32, desc: user id}
+
+VPN_OPERATE_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: send vpn operation fault event}
+  USER_TYPE: {type: BOOL, desc: user type}
+  VPN_TYPE: {type: INT32, desc: vpn type}
+  BUNDLE_NAME: {type: STRING, desc: the app bundle name}
+  OPERATION_TYPE: {type: INT32, desc: the vpn operation type}
+  ERROR_TYPE: {type: INT32, desc: the error code}

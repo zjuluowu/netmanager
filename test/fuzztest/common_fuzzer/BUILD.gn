@@ -1,0 +1,93 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/config/features.gni")
+
+#####################hydra-fuzz###################
+import("//build/test.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+##############################fuzztest##########################################
+ohos_fuzztest("CommonFuzzTest") {
+  module_out_path = fuzz_test_path
+  fuzz_config_file = "$NETMANAGER_BASE_ROOT/test/fuzztest/common_fuzzer"
+  _cfi_blocklist_path =
+      "$NETMANAGER_BASE_ROOT/test/fuzztest/common_fuzzer/cfi_blocklist.txt"
+
+  include_dirs = [
+    "$INNERKITS_ROOT/include",
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$INNERKITS_ROOT/netpolicyclient/include",
+    "$INNERKITS_ROOT/netpolicyclient/include/proxy",
+    "$INNERKITS_ROOT/netstatsclient/include",
+    "$NETCONNMANAGER_SOURCE_DIR/include",
+    "$NETMANAGER_BASE_ROOT/services/common/include",
+    "$NETPOLICYMANAGER_SOURCE_DIR/include",
+    "$NETPOLICYMANAGER_SOURCE_DIR/include/stub",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETSYSNATIVE_INNERKITS_SOURCE_DIR",
+  ]
+
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+    "-flto",
+    "-fvisibility=hidden",
+  ]
+
+  ldflags = [ "-flto" ]
+
+  sources = [ "common_fuzzer.cpp" ]
+
+  deps = [
+    "$INNERKITS_ROOT/netpolicyclient:net_policy_manager_if",
+    "$INNERKITS_ROOT/netstatsclient:net_stats_manager_if",
+    "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    "$NETCONNMANAGER_SOURCE_DIR:net_conn_manager_static",
+    "$NETMANAGER_BASE_ROOT/services/netpolicymanager:net_policy_manager_static",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+  ]
+
+  defines = [
+    "HI_LOG_ENABLE",
+    "DH_LOG_TAG=\"NetPolicyClientFuzzTest\"",
+    "LOG_DOMAIN=0xD004100",
+  ]
+
+  external_deps = [
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "common_event_service:cesfwk_innerkits",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+}
+
+###############################################################################
+group("fuzztest") {
+  testonly = true
+
+  deps = [ ":CommonFuzzTest" ]
+}
+
+###############################################################################
+

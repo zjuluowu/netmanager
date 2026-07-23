@@ -1,0 +1,75 @@
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# args of this module
+SUBSYSTEM_DIR = "//foundation/communication"
+NETMANAGER_BASE_ROOT = "$SUBSYSTEM_DIR/netmanager_base"
+NETMANAGER_EXT_ROOT = "$SUBSYSTEM_DIR/netmanager_ext"
+
+# args of frameworks
+NETCONNMANAGER_INNERKITS_SOURCE_DIR =
+    "$NETMANAGER_BASE_ROOT/frameworks/native/netconnclient"
+NETPOLICYMANAGER_INNERKITS_SOURCE_DIR =
+    "$NETMANAGER_BASE_ROOT/frameworks/native/netpolicyclient"
+NETSTATSMANAGER_INNERKITS_SOURCE_DIR =
+    "$NETMANAGER_BASE_ROOT/frameworks/native/netstatsclient"
+NETSYSNATIVE_INNERKITS_SOURCE_DIR =
+    "$NETMANAGER_BASE_ROOT/frameworks/native/netmanagernative"
+
+# args of interfaces
+INNERKITS_ROOT = "$NETMANAGER_BASE_ROOT/interfaces/innerkits"
+
+# args of services
+NETMANAGERNATIVE_ROOT = "$NETMANAGER_BASE_ROOT/services/netmanagernative"
+NETCONNMANAGER_SOURCE_DIR = "$NETMANAGER_BASE_ROOT/services/netconnmanager"
+NETPOLICYMANAGER_SOURCE_DIR = "$NETMANAGER_BASE_ROOT/services/netpolicymanager"
+NETSTATSMANAGER_SOURCE_DIR = "$NETMANAGER_BASE_ROOT/services/netstatsmanager"
+NETCONNMANAGER_COMMON_DIR = "$NETMANAGER_BASE_ROOT/services/common"
+FWMARK_CLIENT_DIR = "$NETMANAGERNATIVE_ROOT/fwmarkclient"
+NETSYSNATIVE_SOURCE_DIR = "$NETMANAGER_BASE_ROOT/services/netmanagernative"
+NETSYSBPFMAP_SOURCE_DIR = "$NETSYSNATIVE_SOURCE_DIR/netsys_bpf_map"
+NETSYSCONTROLLER_ROOT_DIR = "$NETMANAGER_BASE_ROOT/services/netsyscontroller"
+ETHERNETMANAGER_SOURCE_DIR = "$NETMANAGER_EXT_ROOT/services/ethernetmanager"
+
+# args of other module
+use_js_debug = false
+declare_args() {
+  enable_netmgr_debug = true
+  enable_sys_func = true
+  enable_elfio = true
+  enable_server_support_ipv6 = false
+  netmanager_base_enable_feature_net_firewall = false
+  netmanager_base_enable_feature_wearable_distributed_net = false
+  netmanager_base_enable_feature_sysvpn = false
+  netmanager_base_enable_netsys_access_policy_diag_listen = false
+  netmanager_base_feature_support_powermanager = false
+  netmanager_base_enable_feature_hosts = false
+  netmanager_base_enable_public_dns_server = false
+  netmanager_base_support_ebpf_memory_miniaturization = false
+  netmanager_base_enable_traffic_statistic = false
+  netmanager_base_extended_features = true
+  netmanager_base_enable_pac_proxy = false
+  netmanager_base_share_traffic_limit_enable = false
+  netmanager_base_enable_set_app_frozened = false
+  netmanager_base_feature_enterprise_route_custom = false
+  netmanager_base_fpga_mode_enable = false
+  netmanager_base_update_netcap = false
+}
+fuzz_test_path = "netmanager_base/netmanager_base"
+
+common_cflags = [
+  "-D_FORTIFY_SOURCE=2",
+  "-fdata-sections",
+  "-ffunction-sections",
+  "-Oz",
+]

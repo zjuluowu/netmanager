@@ -1,0 +1,253 @@
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/netmanager_base/netmanager_base_config.gni")
+
+config("net_stats_manager_config") {
+  include_dirs = [
+    "$INNERKITS_ROOT/netmanagernative/include",
+    "$INNERKITS_ROOT/netstatsclient/include/proxy",
+    "$NETCONNMANAGER_COMMON_DIR/include",
+    "include",
+    "include/stub",
+    "include/common",
+    "$NETSYSBPFMAP_SOURCE_DIR/include",
+    "$NETSYSCONTROLLER_ROOT_DIR/include",
+    "$NETSYSNATIVE_SOURCE_DIR/include/manager",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys/wrapper",
+    "$NETSYSNATIVE_SOURCE_DIR/include/netsys",
+    "$NETMANAGER_BASE_ROOT/services/netmanagernative/bpf/include",
+    "$NETMANAGER_BASE_ROOT/services/netstatslimitntf/include",
+  ]
+}
+
+ohos_shared_library("net_stats_manager") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    boundary_sanitize = true
+    ubsan = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "src/common/net_stats_service_common.cpp",
+    "src/net_stats_cached.cpp",
+    "src/net_stats_callback.cpp",
+    "src/net_stats_data_handler.cpp",
+    "src/net_stats_database_helper.cpp",
+    "src/net_stats_history.cpp",
+    "src/net_stats_listener.cpp",
+    "src/net_stats_service.cpp",
+    "src/net_stats_sqlite_statement.cpp",
+    "src/net_stats_subscriber.cpp",
+    "src/stub/net_stats_callback_proxy.cpp",
+    "src/net_stats_utils.cpp",
+    "src/net_info_observer.cpp",
+    "src/net_stats_calibrate.cpp",
+  ]
+
+  configs = [ ":net_stats_manager_config" ]
+
+  deps = [
+    "$INNERKITS_ROOT/netconnclient:net_conn_manager_if",
+    "$INNERKITS_ROOT/netstatsclient:net_stats_parcel",
+    "$INNERKITS_ROOT/netstatsclient:netstats_service_interface_stub",
+    "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    "$NETMANAGER_BASE_ROOT/utils:net_data_share",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETSYSCONTROLLER_ROOT_DIR:netsys_controller",
+    "$INNERKITS_ROOT/netmanagernative:net_native_manager_if",
+  ]
+
+  cflags = common_cflags + [
+    "-fvisibility=hidden",
+  ]
+
+  cflags_cc = common_cflags + [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+  ]
+
+  ldflags = [
+    "-Wl,--exclude-libs=ALL",
+    "-Wl,--gc-sections",
+  ]
+
+  external_deps = [
+    "ability_base:configuration",
+    "ability_base:want",
+    "ability_runtime:wantagent_innerkits",
+    "bounds_checking_function:libsec_shared",
+    "common_event_service:cesfwk_innerkits",
+    "cJSON:cjson",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hitrace:hitrace_meter",
+    "ipc:ipc_core",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "sqlite:sqlite",
+    "time_service:time_client",
+    "os_account:os_account_innerkits",
+  ]
+
+  defines = [
+    "USE_SQLITE_SYMBOLS",
+    "NETMGR_LOG_TAG = \"NetStatsClient\"",
+    "LOG_DOMAIN = 0xD0015B0",
+  ]
+
+  if (netmanager_base_enable_netsys_access_policy_diag_listen) {
+    external_deps += [
+      "ability_runtime:extension_manager",
+      "ability_runtime:dataobs_manager",
+      "cJSON:cjson",
+      "cellular_data:tel_cellular_data_api",
+      "core_service:tel_core_service_api",
+      "data_share:datashare_consumer",
+      "relational_store:native_rdb",
+      "state_registry:tel_state_registry_api",
+    ]
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+    sources += [
+      "src/net_stats_base.cpp",
+      "src/net_stats_limit_notification_adapter.cpp",
+      "src/net_stats_trafficLimit_dialog.cpp",
+      "src/net_stats_traffic_plan_service.cpp",
+      "src/net_stats_data_clone.cpp",
+      "src/net_stats_settings_observer.cpp",
+    ]
+  }
+
+  if (netmanager_base_share_traffic_limit_enable) {
+    defines += [ "SUPPORT_NETWORK_SHARE" ]
+    external_deps += [ "netmanager_ext:net_tether_manager_if" ]
+  }
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
+
+ohos_static_library("net_stats_manager_static") {
+  testonly = true
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  branch_protector_ret = "pac_ret"
+
+  sources = [
+    "src/common/net_stats_service_common.cpp",
+    "src/net_stats_cached.cpp",
+    "src/net_stats_callback.cpp",
+    "src/net_stats_data_handler.cpp",
+    "src/net_stats_database_helper.cpp",
+    "src/net_stats_history.cpp",
+    "src/net_stats_listener.cpp",
+    "src/net_stats_service.cpp",
+    "src/net_stats_subscriber.cpp",
+    "src/net_stats_sqlite_statement.cpp",
+    "src/stub/net_stats_callback_proxy.cpp",
+    "src/net_stats_utils.cpp",
+    "src/net_info_observer.cpp",
+    "src/net_stats_calibrate.cpp",
+  ]
+
+  configs = [ ":net_stats_manager_config" ]
+
+  deps = [
+    "$INNERKITS_ROOT/netconnclient:net_conn_manager_if",
+    "$INNERKITS_ROOT/netstatsclient:net_stats_parcel",
+    "$INNERKITS_ROOT/netstatsclient:netstats_service_interface_stub",
+    "$NETCONNMANAGER_COMMON_DIR:net_service_common",
+    "$NETMANAGER_BASE_ROOT/utils:net_data_share",
+    "$NETMANAGER_BASE_ROOT/utils:net_manager_common",
+    "$NETSYSCONTROLLER_ROOT_DIR:netsys_controller",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:wantagent_innerkits",
+    "common_event_service:cesfwk_innerkits",
+    "cJSON:cjson",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hitrace:hitrace_meter",
+    "ipc:ipc_core",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "sqlite:sqlite",
+    "time_service:time_client",
+    "os_account:os_account_innerkits"
+  ]
+
+  defines = [
+    "USE_SQLITE_SYMBOLS",
+    "NETMGR_LOG_TAG = \"NetStatsClient\"",
+    "LOG_DOMAIN = 0xD0015B0",
+    "UNITTEST_FORBID_FFRT",
+    "NETMANAGER_TEST",
+  ]
+
+  if (netmanager_base_enable_netsys_access_policy_diag_listen) {
+    external_deps += [
+      "ability_runtime:extension_manager",
+      "ability_runtime:dataobs_manager",
+      "cJSON:cjson",
+      "cellular_data:tel_cellular_data_api",
+      "core_service:tel_core_service_api",
+      "data_share:datashare_consumer",
+      "distributed_notification_service:ans_innerkits",
+      "i18n:intl_util",
+      "relational_store:native_rdb",
+      "os_account:os_account_innerkits",
+      "state_registry:tel_state_registry_api",
+    ]
+    defines += [ "SUPPORT_TRAFFIC_STATISTIC" ]
+    sources += [
+      "src/net_stats_base.cpp",
+      "$NETMANAGER_BASE_ROOT/services/netstatslimitntf/src/net_stats_notification.cpp",
+      "src/net_stats_limit_notification_adapter.cpp",
+      "src/net_stats_trafficLimit_dialog.cpp",
+      "src/net_stats_traffic_plan_service.cpp",
+      "src/net_stats_data_clone.cpp",
+      "src/net_stats_settings_observer.cpp"
+    ]
+  }
+
+  if (netmanager_base_share_traffic_limit_enable) {
+    defines += [ "SUPPORT_NETWORK_SHARE" ]
+    external_deps += [ "netmanager_ext:net_tether_manager_if" ]
+  }
+
+  if (enable_netmgr_debug) {
+    defines += [ "NETMGR_DEBUG" ]
+  }
+
+  external_deps += [ "hilog:libhilog" ]
+
+  part_name = "netmanager_base"
+  subsystem_name = "communication"
+}
